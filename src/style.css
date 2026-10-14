@@ -3,3 +3,4 @@
 pre{font-size:.72rem;white-space:pre-wrap;max-height:230px;overflow:auto;overflow-wrap:anywhere}
 .space{margin-top:20px}.barchart{display:flex;gap:8px;align-items:flex-end;min-height:150px;overflow-x:auto;padding-top:20px}.barcol{min-width:35px;flex:1;text-align:center;font-size:.7rem}.barcol div{background:#9eb78a;border-radius:5px 5px 0 0;min-height:2px;max-width:60px;margin:5px auto}.barcol small{font-size:.6rem;white-space:nowrap}
 .assistant-button{margin-top:20px;background:#eef1e6;color:#547347;border:1px dashed #bac9ac;width:100%;text-align:left;padding:14px 20px}
+.capture-gallery{display:flex;gap:12px;overflow:auto}.capture-gallery figure{margin:10px 0;min-width:140px;max-width:220px}.capture-gallery img{width:100%;max-height:320px;object-fit:contain;border-radius:10px;background:#e7ebdf}.capture-gallery figcaption{font-size:.7rem;overflow-wrap:anywhere}

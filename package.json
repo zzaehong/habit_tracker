@@ -10,7 +10,7 @@
     "check": "npm test && npm run build",
     "server": "tsx server/index.ts",
     "test:e2e": "playwright test",
-    "ocr:build": "swiftc scripts/ocr.swift -o runtime/ocr"
+    "ocr:build": "mkdir -p runtime/swift-cache && swiftc -module-cache-path runtime/swift-cache scripts/ocr.swift -o runtime/ocr"
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.0",
