@@ -11,3 +11,7 @@
 - 초기 로컬 기능 테스트 6개 및 타입 검사·빌드 PASS.
 - npm audit에서 static/Vitest 취약 버전 발견. 수정 버전 전환 중 기존 설치 트리 peer 충돌 FAIL. 생성된 의존성 트리를 재설치하여 해결 진행.
 - 수정 의존성 설치 완료: audit 0 vulnerabilities. 재검증 6 tests PASS, typecheck/build PASS.
+- offline-records develop 병합 후 회귀: 6 tests/typecheck/build PASS.
+
+## meal-tracking
+- 식단 스냅샷, 외식 미상/거름, 요일 테스트 포함 9 tests/typecheck/build PASS.
