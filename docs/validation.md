@@ -19,3 +19,7 @@
 
 ## device-sync
 - 10 tests/typecheck/build PASS. 실제 SQLite/Fastify로 인증, 코드 재사용 거부, 중복 작업, 충돌, 삭제 및 커서 검증.
+- device-sync develop 회귀: 10 tests/typecheck/build PASS.
+
+## history-insights
+- 13 tests/typecheck/build PASS. JSON/ZIP 왕복, CSV escaping, 누락값 집계 검증.
