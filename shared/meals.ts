@@ -1,8 +1,100 @@
-import {type MealPlan,type Entry,type Activity,now,weekday} from './model';
-export const slots=['러닝 전 에피타이저','아침','점심','저녁'];
-export const nutrients=['kcal','carbs','protein','fat'] as const;
-export const nutrientLabels={kcal:'열량 (kcal)',carbs:'탄수화물 (g)',protein:'단백질 (g)',fat:'지방 (g)'};
-export function defaultPlan(slot:string):MealPlan{return {id:'meal-plan-'+slots.indexOf(slot),type:'mealPlan',version:0,updatedAt:now(),slot,menu:'',kcal:0,carbs:0,protein:0,fat:0,enabled:true,weekdays:[0,1,2,3,4,5,6]}}
-export function mealEntry(a:Activity,plan:MealPlan,date:string,status:'planned'|'outside'|'skipped'):Entry{return {id:crypto.randomUUID(),type:'entry',version:0,updatedAt:now(),activityId:a.id,date,timezone:'Asia/Seoul',done:status!=='skipped',definition:structuredClone(a),source:'manual',attachments:[],data:{custom:{},slot:plan.slot,mealStatus:status,mealTime:status==='skipped'?undefined:new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date()),...(status==='planned'?{menu:plan.menu,kcal:plan.kcal,carbs:plan.carbs,protein:plan.protein,fat:plan.fat}:{})}}}
-export function nutritionSummary(entries:Entry[]){const meals=entries.filter(e=>!e.deleted&&e.definition.kind==='meal'&&e.data.mealStatus&&e.data.mealStatus!=='skipped');return {totals:Object.fromEntries(nutrients.map(k=>[k,meals.reduce((s,e)=>s+(e.data[k]??0),0)])) as Record<typeof nutrients[number],number>,unknown:meals.filter(e=>nutrients.some(k=>e.data[k]===undefined)).length}}
-export function duePlans(plans:MealPlan[],date:string){return plans.filter(p=>!p.deleted&&p.enabled&&p.weekdays.includes(weekday(date)))}
+import {
+  type MealPlan,
+  type Entry,
+  type Activity,
+  now,
+  weekday,
+} from "./model";
+export const slots = ["러닝 전 에피타이저", "아침", "점심", "저녁"];
+export const nutrients = ["kcal", "carbs", "protein", "fat"] as const;
+export const nutrientLabels = {
+  kcal: "열량 (kcal)",
+  carbs: "탄수화물 (g)",
+  protein: "단백질 (g)",
+  fat: "지방 (g)",
+};
+export function defaultPlan(slot: string): MealPlan {
+  return {
+    id: "meal-plan-" + slots.indexOf(slot),
+    type: "mealPlan",
+    version: 0,
+    updatedAt: now(),
+    slot,
+    menu: "",
+    kcal: 0,
+    carbs: 0,
+    protein: 0,
+    fat: 0,
+    enabled: true,
+    weekdays: [0, 1, 2, 3, 4, 5, 6],
+  };
+}
+export function mealEntry(
+  a: Activity,
+  plan: MealPlan,
+  date: string,
+  status: "planned" | "outside" | "skipped",
+): Entry {
+  return {
+    id: slots.includes(plan.slot) ? `${a.id}:meal:${date}:${slots.indexOf(plan.slot)}` : crypto.randomUUID(),
+    type: "entry",
+    version: 0,
+    updatedAt: now(),
+    activityId: a.id,
+    date,
+    timezone: "Asia/Seoul",
+    done: status !== "skipped",
+    definition: structuredClone(a),
+    source: "manual",
+    attachments: [],
+    data: {
+      custom: {},
+      slot: plan.slot,
+      mealStatus: status,
+      mealTime:
+        status === "skipped"
+          ? undefined
+          : new Intl.DateTimeFormat("en-GB", {
+              timeZone: "Asia/Seoul",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }).format(new Date()),
+      ...(status === "planned"
+        ? {
+            menu: plan.menu,
+            kcal: plan.kcal,
+            carbs: plan.carbs,
+            protein: plan.protein,
+            fat: plan.fat,
+          }
+        : {}),
+    },
+  };
+}
+export function nutritionSummary(entries: Entry[]) {
+  const meals = entries.filter(
+    (e) =>
+      !e.deleted &&
+      e.definition.kind === "meal" &&
+      e.data.mealStatus &&
+      e.data.mealStatus !== "skipped",
+  );
+  return {
+    totals: Object.fromEntries(
+      nutrients.map((k) => [
+        k,
+        meals.reduce((s, e) => s + (e.data[k] ?? 0), 0),
+      ]),
+    ) as Record<(typeof nutrients)[number], number>,
+    unknown: meals.filter((e) => nutrients.some((k) => e.data[k] === undefined))
+      .length,
+  };
+}
+export function duePlans(plans: MealPlan[], date: string) {
+  return plans.filter(
+    (p) => !p.deleted && p.enabled && p.weekdays.includes(weekday(date)),
+  );
+}
+
+export function planNutrition(plan?:MealPlan){return {menu:plan?.menu,kcal:plan?.kcal,carbs:plan?.carbs,protein:plan?.protein,fat:plan?.fat};}

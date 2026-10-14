@@ -1,13 +1,347 @@
-import {useState} from 'react';
-import {zipSync,unzipSync,strToU8,strFromU8} from 'fflate';
-import {db,save} from './db';
-import {type Entity,type Entry,type Activity,today} from '../shared/model';
-import {makeBackup,backupSchema,csv,comparable} from '../shared/backup';
-export function download(name:string,data:BlobPart,type='application/json'){const url=URL.createObjectURL(new Blob([data],{type}));const link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),10000)}
-export function Backup({entities}:{entities:Entity[]}){const [preview,setPreview]=useState<{entities:Entity[];files:Record<string,Uint8Array>}>();const [message,setMessage]=useState('');const [from,setFrom]=useState(''),[to,setTo]=useState(today()),[filter,setFilter]=useState('');const activities=entities.filter((e):e is Activity=>e.type==='activity'&&!e.deleted);
- function selected(){const records=entities.filter((e):e is Entry=>e.type==='entry'&&(!from||e.date>=from)&&e.date<=to&&(!filter||e.activityId===filter));const ids=new Set(records.flatMap(e=>e.attachments));return entities.filter(e=>e.type==='entry'?records.some(r=>r.id===e.id):e.type==='attachment'?ids.has(e.id):e.type==='draft'?(!from||e.date>=from)&&e.date<=to: e.type==='activity'?!filter||e.id===filter:true)}
- async function exportData(format:'json'|'zip'|'csv'){try{const data=selected();if(format==='json'){download('chagok-'+today()+'.json',JSON.stringify(makeBackup(data),null,2));return}const files:Record<string,Uint8Array>={};if(format==='zip'){files['records.json']=strToU8(JSON.stringify(makeBackup(data)));for(const e of data){if(e.type==='attachment'&&!e.deleted){const blob=await db.blobs.get(e.id);if(!blob)throw Error('이미지가 아직 이 기기에 없습니다. 동기화 후 다시 시도하세요.');files['attachments/'+e.hash]=new Uint8Array(await blob.blob.arrayBuffer())}}}else{const rows=data.filter((e):e is Entry=>e.type==='entry'&&!e.deleted);files['records.csv']=strToU8(csv([['id','활동','날짜','완료','책','시작페이지','마지막페이지','시간_초','거리_km','심박수_bpm','케이던스','체감강도','과목','대상','예정시간_초','메모'],...rows.map(e=>[e.id,e.definition.name,e.date,e.done,e.data.book,e.data.startPage,e.data.lastPage,e.data.seconds,e.data.distance,e.data.heartRate,e.data.cadence,e.data.intensity,e.data.subject,e.data.alias,e.data.plannedSeconds,e.data.note])]));files['sets.csv']=strToU8(csv([['기록ID','운동','세트','무게_kg','횟수','완료'],...rows.flatMap(e=>(e.data.sets||[]).map((s,i)=>[e.id,s.exercise,i+1,s.kg,s.reps,s.done]))]));files['meals.csv']=strToU8(csv([['기록ID','날짜','끼니','상태','시간','메뉴','kcal','탄수화물_g','단백질_g','지방_g'],...rows.filter(e=>e.definition.kind==='meal').map(e=>[e.id,e.date,e.data.slot,e.data.mealStatus,e.data.mealTime,e.data.menu,e.data.kcal,e.data.carbs,e.data.protein,e.data.fat])]));files['custom.csv']=strToU8(csv([['기록ID','항목ID','항목','값','단위'],...rows.flatMap(e=>Object.entries(e.data.custom).map(([id,v])=>[e.id,id,e.definition.fields.find(f=>f.id===id)?.name,v,e.definition.fields.find(f=>f.id===id)?.unit]))]))}download(`chagok-${format}-${today()}.zip`,zipSync(files) as BlobPart,'application/zip')}catch(e){setMessage(String(e))}}
- async function read(file:File){try{if(file.size>200*1024*1024)throw Error('백업 파일은 200MB 이하로 선택하세요.');const bytes=new Uint8Array(await file.arrayBuffer());let files:Record<string,Uint8Array>={};let json:string;if(file.name.endsWith('.zip')){let expanded=0;files=unzipSync(bytes,{filter:f=>{expanded+=f.originalSize;if(expanded>300*1024*1024)throw Error('압축 해제 크기 제한 초과');return f.name==='records.json'||/^attachments\/[a-f0-9]{64}$/.test(f.name)}});if(!files['records.json'])throw Error('records.json 없음');json=strFromU8(files['records.json'])}else json=strFromU8(bytes);const backup=backupSchema.parse(JSON.parse(json));for(const e of backup.entities){if(e.type==='attachment'&&files['attachments/'+e.hash]){const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',files['attachments/'+e.hash] as BufferSource))).map(b=>b.toString(16).padStart(2,'0')).join('');if(hash!==e.hash)throw Error('첨부 해시 불일치')}}setPreview({entities:backup.entities,files});setMessage('')}catch(e){setMessage('복원 파일 검증 실패: '+String(e))}}
- async function restore(){if(!preview)return;try{await db.transaction('rw',db.entities,db.outbox,db.conflicts,db.blobs,async()=>{for(const incoming of preview.entities){const current=await db.entities.get(incoming.id);if(current&&comparable(current)!==comparable(incoming)){await db.conflicts.put({id:current.id,local:incoming,remote:current});continue}if(!current){const entity={...incoming,version:0};await db.entities.put(entity);await db.outbox.add({id:crypto.randomUUID(),baseVersion:0,entity})}if(incoming.type==='attachment'&&preview.files['attachments/'+incoming.hash])await db.blobs.put({id:incoming.id,blob:new Blob([preview.files['attachments/'+incoming.hash] as BlobPart],{type:incoming.mime})})}});setPreview(undefined);setMessage('복원 완료. 내용이 다른 ID는 연결 설정의 충돌 목록에서 선택하세요.');window.dispatchEvent(new Event('local-change'))}catch(e){setMessage('복원 실패: '+String(e))}}
- return <section className="panel"><h2>내보내기와 복원</h2><p className="muted">전체 백업은 기간과 활동 필터를 비워 ZIP으로 저장하세요. JSON에는 이미지 본문이 포함되지 않습니다.</p><div className="formgrid"><label>시작일<input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label><label>종료일<input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label></div><label>활동<select value={filter} onChange={e=>setFilter(e.target.value)}><option value="">전체</option>{activities.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label><div className="row wrap"><button onClick={()=>exportData('json')}>JSON 내보내기</button><button onClick={()=>exportData('zip')}>이미지 포함 ZIP</button><button onClick={()=>exportData('csv')}>CSV 묶음</button></div><label>JSON / ZIP 복원<input type="file" accept=".json,.zip" onChange={e=>{if(e.target.files?.[0])void read(e.target.files[0]);e.target.value=''}}/></label>{preview&&<div className="fieldbox"><p>{preview.entities.length}개 데이터 · 같은 ID의 다른 내용은 확인 대상으로 보존합니다.</p><div className="row"><button onClick={restore}>복원 실행</button><button onClick={()=>setPreview(undefined)}>취소</button></div></div>}{message&&<p role="status">{message}</p>}</section>
+import { useState } from "react";
+import { zipSync, unzipSync, strToU8, strFromU8 } from "fflate";
+import { db, enqueue } from "./db";
+import { type Entity, type Entry, type Activity, today } from "../shared/model";
+import {
+  makeBackup,
+  backupSchema,
+  csv,
+  comparable,
+  selectBackup,
+} from "../shared/backup";
+export function download(
+  name: string,
+  data: BlobPart,
+  type = "application/json",
+) {
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+export function Backup({ entities }: { entities: Entity[] }) {
+  const [preview, setPreview] = useState<{
+    entities: Entity[];
+    files: Record<string, Uint8Array>;
+  }>();
+  const [message, setMessage] = useState("");
+  const [from, setFrom] = useState(""),
+    [to, setTo] = useState(""),
+    [filter, setFilter] = useState("");
+  const activities = entities.filter(
+    (e): e is Activity => e.type === "activity" && !e.deleted,
+  );
+  function selected() {
+    return selectBackup(entities, from, to, filter);
+  }
+  async function exportData(format: "json" | "zip" | "csv") {
+    try {
+      const data = selected();
+      if (format === "json") {
+        download(
+          "chagok-" + today() + ".json",
+          JSON.stringify(makeBackup(data), null, 2),
+        );
+        return;
+      }
+      const files: Record<string, Uint8Array> = {};
+      if (format === "zip") {
+        files["records.json"] = strToU8(JSON.stringify(makeBackup(data)));
+        for (const e of data) {
+          if (e.type === "attachment" && !e.deleted) {
+            const blob = await db.blobs.get(e.id);
+            if (!blob)
+              throw Error(
+                "이미지가 아직 이 기기에 없습니다. 동기화 후 다시 시도하세요.",
+              );
+            files["attachments/" + e.hash] = new Uint8Array(
+              await blob.blob.arrayBuffer(),
+            );
+          }
+        }
+      } else {
+        const rows = data.filter(
+          (e): e is Entry => e.type === "entry" && !e.deleted,
+        );
+        files["records.csv"] = strToU8(
+          csv([
+            [
+              "id",
+              "활동",
+              "날짜",
+              "완료",
+              "책",
+              "시작페이지",
+              "마지막페이지",
+              "시간_초",
+              "거리_km",
+              "심박수_bpm",
+              "케이던스",
+              "체감강도",
+              "과목",
+              "대상",
+              "예정시간_초",
+              "메모",
+            ],
+            ...rows.map((e) => [
+              e.id,
+              e.definition.name,
+              e.date,
+              e.done,
+              e.data.book,
+              e.data.startPage,
+              e.data.lastPage,
+              e.data.seconds,
+              e.data.distance,
+              e.data.heartRate,
+              e.data.cadence,
+              e.data.intensity,
+              e.data.subject,
+              e.data.alias,
+              e.data.plannedSeconds,
+              e.data.note,
+            ]),
+          ]),
+        );
+        files["sets.csv"] = strToU8(
+          csv([
+            ["기록ID", "운동", "세트", "무게_kg", "횟수", "완료"],
+            ...rows.flatMap((e) =>
+              (e.data.sets || []).map((s, i) => [
+                e.id,
+                s.exercise,
+                i + 1,
+                s.kg,
+                s.reps,
+                s.done,
+              ]),
+            ),
+          ]),
+        );
+        files["meals.csv"] = strToU8(
+          csv([
+            [
+              "기록ID",
+              "날짜",
+              "끼니",
+              "상태",
+              "시간",
+              "메뉴",
+              "kcal",
+              "탄수화물_g",
+              "단백질_g",
+              "지방_g",
+            ],
+            ...rows
+              .filter((e) => e.definition.kind === "meal")
+              .map((e) => [
+                e.id,
+                e.date,
+                e.data.slot,
+                e.data.mealStatus,
+                e.data.mealTime,
+                e.data.menu,
+                e.data.kcal,
+                e.data.carbs,
+                e.data.protein,
+                e.data.fat,
+              ]),
+          ]),
+        );
+        files["custom.csv"] = strToU8(
+          csv([
+            ["기록ID", "항목ID", "항목", "값", "단위"],
+            ...rows.flatMap((e) =>
+              Object.entries(e.data.custom).map(([id, v]) => [
+                e.id,
+                id,
+                e.definition.fields.find((f) => f.id === id)?.name,
+                v,
+                e.definition.fields.find((f) => f.id === id)?.unit,
+              ]),
+            ),
+          ]),
+        );
+      }
+      download(
+        `chagok-${format}-${today()}.zip`,
+        zipSync(files) as BlobPart,
+        "application/zip",
+      );
+    } catch (e) {
+      setMessage(String(e));
+    }
+  }
+  async function read(file: File) {
+    try {
+      if (file.size > 200 * 1024 * 1024)
+        throw Error("백업 파일은 200MB 이하로 선택하세요.");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let files: Record<string, Uint8Array> = {};
+      let json: string;
+      if (file.name.endsWith(".zip")) {
+        let expanded = 0;
+        files = unzipSync(bytes, {
+          filter: (f) => {
+            expanded += f.originalSize;
+            if (expanded > 300 * 1024 * 1024)
+              throw Error("압축 해제 크기 제한 초과");
+            return (
+              f.name === "records.json" ||
+              /^attachments\/[a-f0-9]{64}$/.test(f.name)
+            );
+          },
+        });
+        if (!files["records.json"]) throw Error("records.json 없음");
+        json = strFromU8(files["records.json"]);
+      } else json = strFromU8(bytes);
+      const backup = backupSchema.parse(JSON.parse(json));
+      for (const e of backup.entities) {
+        if (e.type === "attachment" && files["attachments/" + e.hash]) {
+          const hash = Array.from(
+            new Uint8Array(
+              await crypto.subtle.digest(
+                "SHA-256",
+                files["attachments/" + e.hash] as BufferSource,
+              ),
+            ),
+          )
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+          if (hash !== e.hash) throw Error("첨부 해시 불일치");
+        }
+      }
+      setPreview({ entities: backup.entities, files });
+      setMessage("");
+    } catch (e) {
+      setMessage("복원 파일 검증 실패: " + String(e));
+    }
+  }
+  async function restore() {
+    if (!preview) return;
+    try {
+      await db.transaction(
+        "rw",
+        db.entities,
+        db.outbox,
+        db.conflicts,
+        db.blobs,
+        db.meta,
+        async () => {
+          for (const incoming of preview.entities) {
+            const current = await db.entities.get(incoming.id);
+            if (current && current.type !== incoming.type)
+              throw Error("같은 ID의 데이터 종류가 다릅니다.");
+            if (
+              current?.type === "attachment" &&
+              incoming.type === "attachment" &&
+              current.hash !== incoming.hash
+            )
+              throw Error("같은 이미지 ID의 해시가 다릅니다.");
+            if (
+              incoming.type === "attachment" &&
+              preview.files["attachments/" + incoming.hash]
+            )
+              await db.blobs.put({
+                id: incoming.id,
+                blob: new Blob(
+                  [preview.files["attachments/" + incoming.hash] as BlobPart],
+                  { type: incoming.mime },
+                ),
+              });
+            if (current && comparable(current) !== comparable(incoming)) {
+              await db.conflicts.put({
+                id: current.id,
+                local: incoming,
+                remote: current,
+                source: "restore",
+              });
+              continue;
+            }
+            if (!current) {
+              const entity = { ...incoming, version: 0 };
+              await db.entities.put(entity);
+              await enqueue(entity, 0);
+            }
+          }
+        },
+      );
+      setPreview(undefined);
+      setMessage(
+        "복원 완료. 내용이 다른 ID는 연결 설정의 충돌 목록에서 선택하세요.",
+      );
+      window.dispatchEvent(new Event("local-change"));
+    } catch (e) {
+      setMessage("복원 실패: " + String(e));
+    }
+  }
+  return (
+    <section className="panel">
+      <h2>내보내기와 복원</h2>
+      <p className="muted">
+        전체 백업은 기간과 활동 필터를 비워 ZIP으로 저장하세요. JSON에는 이미지
+        본문이 포함되지 않습니다.
+      </p>
+      <div className="formgrid">
+        <label>
+          시작일
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label>
+          종료일
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+      </div>
+      <label>
+        활동
+        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="">전체</option>
+          {activities.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="row wrap">
+        <button onClick={() => exportData("json")}>JSON 내보내기</button>
+        <button onClick={() => exportData("zip")}>이미지 포함 ZIP</button>
+        <button onClick={() => exportData("csv")}>CSV 묶음</button>
+      </div>
+      <label>
+        JSON / ZIP 복원
+        <input
+          type="file"
+          accept=".json,.zip"
+          onChange={(e) => {
+            if (e.target.files?.[0]) void read(e.target.files[0]);
+            e.target.value = "";
+          }}
+        />
+      </label>
+      {preview && (
+        <div className="fieldbox">
+          <p>
+            {preview.entities.length}개 데이터 · 같은 ID의 다른 내용은 확인
+            대상으로 보존합니다.
+          </p>
+          <div className="row">
+            <button onClick={restore}>복원 실행</button>
+            <button onClick={() => setPreview(undefined)}>취소</button>
+          </div>
+        </div>
+      )}
+      {message && <p role="status">{message}</p>}
+    </section>
+  );
 }

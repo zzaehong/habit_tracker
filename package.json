@@ -5,12 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/build-sw.mjs",
     "test": "vitest run",
     "check": "npm test && npm run build",
-    "server": "tsx server/index.ts",
+    "server": "node --import tsx server/index.ts",
     "test:e2e": "playwright test",
-    "ocr:build": "mkdir -p runtime/swift-cache && swiftc -module-cache-path runtime/swift-cache scripts/ocr.swift -o runtime/ocr"
+    "ocr:build": "mkdir -p runtime/swift-cache && swiftc -module-cache-path runtime/swift-cache scripts/ocr.swift -o runtime/ocr",
+    "pair": "node --import tsx scripts/pair.ts",
+    "launchagent": "node --import tsx scripts/launchagent.ts",
+    "restore:server": "node --import tsx scripts/restore-server.ts",
+    "evaluate:ai": "node --import tsx scripts/evaluate-ai.ts",
+    "format": "prettier --write src shared server tests e2e scripts/*.ts *.ts *.json public/*.js"
   },
   "dependencies": {
     "@fastify/multipart": "^9.0.0",
@@ -30,6 +35,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "6.1.2",
     "fake-indexeddb": "^6.0.0",
+    "prettier": "^3.9.10",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vite": "8.3.4",
