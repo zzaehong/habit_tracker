@@ -30,3 +30,12 @@
 - Ollama 및 Tailscale CLI/앱 설치를 찾지 못함. 실제 로컬 모델 30개 한국어 예제/성능 측정은 NOT RUN. 테스트 입력과 실행 스크립트 제공.
 - AI 서버 테스트 추가 중 테스트 코드 구문 오류 FAIL. 구문 수정 후 재검증.
 - AI 출력 검증·날짜 기준·작업 중복 방지 포함 17 tests/typecheck/build PASS. AI 서버는 모의 모델 응답으로 검증.
+- local-ai-entry develop 회귀: 17 tests/typecheck/build PASS.
+
+## nrc-capture
+- 최초 OCR 빌드 FAIL: 시스템 Swift module cache 쓰기 권한. 프로젝트 runtime 캐시로 변경.
+- 최초 파서 테스트 FAIL 2건: 숫자가 뒤따르는 시간 라벨 미인식. 라벨 인식 범위를 수정.
+- 파서 수정 후 22 tests/typecheck/build PASS, Swift OCR 컴파일 PASS.
+- 제한된 샌드박스 OCR 실행 FAIL: Vision 시스템 서비스 접근 불가. 승인된 네이티브 실행에서 합성 PNG 5개 필드 인식 PASS.
+- OCR 첫 실행 측정: 14.77초, maximum resident set 86,589,440 bytes, peak footprint 100,221,816 bytes. 합성 이미지 결과이며 실제 NRC 캡처 정확도는 NOT RUN(사용자 캡처 미제공).
+- 성능 측정 호스트 확인: Apple M4, RAM 17,179,869,184 bytes (16GB).
