@@ -1,0 +1,11 @@
+# Git Flow
+- main은 안정 버전, develop은 통합 브랜치다. feature/*는 최신 develop에서 시작한다.
+- 시작 전 status, branch, fetch를 확인한다. 원격 develop이 있으면 pull --ff-only한다. 추적 원격이 없으면 pull을 생략하고 이유를 기록한다.
+- develop이 없는 최초 설정에 한해 사용자 승인대로 현재 main에서 로컬 develop을 생성한다.
+- 논리 단위로 구체적인 한글 커밋을 만든다. 기능:, 수정:, 테스트:, 문서:, 정리:, 병합:을 사용한다.
+- 관련 테스트 후 develop에 --no-ff 병합하고 전체 회귀 검증을 다시 실행한다. 의존 기능은 앞선 통합 검증 이후 시작한다.
+- 사용자 변경을 reset --hard, 강제 restore/checkout, stash drop으로 제거하지 않는다. 충돌은 보고한다.
+- 실패 기록은 보존한다. 실행하지 못한 테스트는 NOT RUN과 이유를 남긴다.
+- DB, 첨부, 백업, 모델, Secret, 임시 실행 상태는 커밋하지 않는다.
+- 명시적 요청 없이 main/release/*/hotfix/* 수정, push, PR, remote branch, tag, release, history rewrite를 하지 않는다.
+- 최종 보고: Starting develop HEAD, feature branches, 주요 한글 commits, merge commits, PASS/FAIL/NOT RUN, Final develop HEAD, Main HEAD/unchanged, push/PR, working tree, limitations.
