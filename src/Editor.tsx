@@ -1,13 +1,13 @@
 import {useState} from 'react';
 import {type Activity,type Entry,type RecordData,type Field,now,today,pace,duration} from '../shared/model';
 import {db,save,getMeta,setMeta} from './db';
-export function RecordEditor({activity,entry,previous,onClose,extra}:{activity:Activity;entry?:Entry;previous?:Entry;onClose:()=>void;extra?:React.ReactNode}){
+export function RecordEditor({activity,entry,previous,onClose,extra,onSaved}:{activity:Activity;entry?:Entry;previous?:Entry;onClose:()=>void;extra?:React.ReactNode;onSaved?:(e:Entry)=>Promise<void>}){
  const [date,setDate]=useState(entry?.date||today());const [data,setData]=useState<RecordData>(entry?.data||{custom:{},...(activity.kind==='reading'?{book:previous?.data.book,startPage:previous?.data.lastPage}:{})});const [error,setError]=useState('');const [busy,setBusy]=useState(false);const [timer,setTimer]=useState<number>();
  const update=(key:string,value:unknown)=>setData(d=>({...d,[key]:value}));
  const text=(key:keyof RecordData,label:string,placeholder='')=><label key={key}>{label}<input value={String(data[key]??'')} placeholder={placeholder} onChange={e=>update(key,e.target.value)}/></label>;
  const num=(key:keyof RecordData,label:string,scale=1)=><label key={key}>{label}<input type="number" min="0" step="any" value={typeof data[key]==='number'?(data[key] as number)/scale:''} onChange={e=>update(key,e.target.value===''?undefined:Number(e.target.value)*scale)}/></label>;
  async function submit(){setBusy(true);setError('');try{if(activity.kind==='reading'&&data.startPage!==undefined&&data.lastPage!==undefined&&data.lastPage<data.startPage&&!confirm('이전 페이지보다 작습니다. 다시 읽은 기록으로 저장할까요?'))return;
- const e:Entry={id:entry?.id||crypto.randomUUID(),type:'entry',version:entry?.version||0,updatedAt:now(),activityId:activity.id,date,timezone:'Asia/Seoul',done:true,data,definition:entry?.definition||activity,source:entry?.source||'manual',attachments:entry?.attachments||[],draftId:entry?.draftId};await save(e);onClose()}catch(e){setError('저장하지 못했습니다: '+String(e))}finally{setBusy(false)}}
+ const e:Entry={id:entry?.id||crypto.randomUUID(),type:'entry',version:entry?.version||0,updatedAt:now(),activityId:activity.id,date,timezone:'Asia/Seoul',done:true,data,definition:entry?.definition||activity,source:entry?.source||'manual',attachments:entry?.attachments||[],draftId:entry?.draftId};await save(e);if(onSaved)await onSaved(e);onClose()}catch(e){setError('저장하지 못했습니다: '+String(e))}finally{setBusy(false)}}
  async function toggleTimer(){const key='timer:'+activity.id;const existing=await getMeta(key);if(existing){update('seconds',Math.max(0,Math.round((Date.now()-existing)/1000)));await db.meta.delete(key);setTimer(undefined)}else{const start=Date.now();await setMeta(key,start);setTimer(start)}}
  useState(()=>{getMeta('timer:'+activity.id).then(setTimer)});
  return <div className="overlay"><section className="dialog" role="dialog" aria-modal="true" aria-label={`${activity.name} 기록`}><div className="row between"><div><small>상세 기록</small><h2>{activity.name}</h2></div><button className="icon" onClick={onClose} aria-label="닫기">×</button></div>

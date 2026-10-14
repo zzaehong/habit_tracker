@@ -23,3 +23,10 @@
 
 ## history-insights
 - 13 tests/typecheck/build PASS. JSON/ZIP 왕복, CSV escaping, 누락값 집계 검증.
+- history-insights develop 회귀: 13 tests/typecheck/build PASS.
+
+## local-ai-entry
+- 재개 시 상태: feature/local-ai-entry 변경 보존. 16 tests/typecheck/build PASS.
+- Ollama 및 Tailscale CLI/앱 설치를 찾지 못함. 실제 로컬 모델 30개 한국어 예제/성능 측정은 NOT RUN. 테스트 입력과 실행 스크립트 제공.
+- AI 서버 테스트 추가 중 테스트 코드 구문 오류 FAIL. 구문 수정 후 재검증.
+- AI 출력 검증·날짜 기준·작업 중복 방지 포함 17 tests/typecheck/build PASS. AI 서버는 모의 모델 응답으로 검증.
