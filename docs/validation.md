@@ -15,3 +15,7 @@
 
 ## meal-tracking
 - 식단 스냅샷, 외식 미상/거름, 요일 테스트 포함 9 tests/typecheck/build PASS.
+- meal-tracking develop 회귀: 9 tests/typecheck/build PASS.
+
+## device-sync
+- 10 tests/typecheck/build PASS. 실제 SQLite/Fastify로 인증, 코드 재사용 거부, 중복 작업, 충돌, 삭제 및 커서 검증.
