@@ -1,11 +1,138 @@
-import {type RecordData,pace} from './model';
-export type OCRLine={text:string;confidence:number;x?:number;y?:number;width?:number;height?:number};
-const fields=['distance','seconds','heartRate','cadence','reportedPace'] as const;
-type Metric=typeof fields[number];
-const labels:Record<Metric,RegExp>={distance:/거리|distance|^(?:km|킬로미터|mi|miles?)$/i,seconds:/총\s*시간|러닝\s*시간|운동\s*시간|duration|running time|^시간(?:\s|$)|^time(?:\s|$)/i,heartRate:/심박수|heart\s*rate|bpm/i,cadence:/케이던스|cadence|steps\/min|spm/i,reportedPace:/페이스|pace|\/km|\/mi/i};
-function clock(s:string){const match=s.match(/\b(\d{1,2})[:'’′](\d{2})(?:[:"”″](\d{2}))?/);if(!match)return;const nums=match.slice(1).filter(Boolean).map(Number);if(nums.slice(1).some(n=>n>=60))return;return nums.length===3?nums[0]*3600+nums[1]*60+nums[2]:nums[0]*60+nums[1]}
-function numeric(text:string,key:Metric){if(key==='seconds'||key==='reportedPace')return clock(text);const m=text.replace(/,/g,'.').match(/(?:^|\s)(\d+(?:\.\d+)?)(?=\s|[a-z/]|$)/i);if(!m)return;const n=Number(m[1]);if(key==='heartRate'&&(n<30||n>250))return;if(key==='cadence'&&(n<30||n>300))return;return n}
-function close(label:OCRLine,value:OCRLine,li:number,vi:number){if(label.x!==undefined&&value.x!==undefined&&label.y!==undefined&&value.y!==undefined){const dx=Math.abs((label.x+(label.width||0)/2)-(value.x+(value.width||0)/2));const dy=Math.abs(label.y-value.y);if(dx>.22||dy>.2)return Infinity;return dx*2+dy}return Math.abs(li-vi)<=1?Math.abs(li-vi):Infinity}
-export function parseNRC(lines:OCRLine[]){const data:RecordData={custom:{}};const questions:string[]=[];const units:Record<string,string>={};for(const key of fields){const candidates:{value:number;score:number;text:string}[]=[];lines.forEach((line,i)=>{if(!labels[key].test(line.text))return;const inline=numeric(line.text,key);if(inline!==undefined)candidates.push({value:inline,score:-1,text:line.text});else lines.forEach((value,j)=>{if(i===j)return;const n=numeric(value.text,key);const score=close(line,value,i,j);if(n!==undefined&&score<Infinity)candidates.push({value:n,score,text:value.text+' '+line.text})})});candidates.sort((a,b)=>a.score-b.score);if(candidates[0]){const c=candidates[0];let value=c.value;if(/\bmi(?:le)?s?\b/i.test(c.text)){units[key]='mi';if(key==='distance')value*=1.609344;if(key==='reportedPace')value/=1.609344}else units[key]=key==='distance'?'km':key==='reportedPace'?'sec/km':'';(data as any)[key]=value;if(candidates.some(x=>x.score===c.score&&Math.abs(x.value-c.value)>.01))questions.push(`${key}: 서로 다른 후보가 있습니다. 원본을 확인하세요.`)}}
- if(data.distance===undefined)questions.push('거리를 확인하세요.');if(data.seconds===undefined)questions.push('러닝 시간을 확인하세요.');const calculated=pace(data);if(calculated!==undefined&&data.reportedPace!==undefined&&Math.abs(calculated-data.reportedPace)>5)questions.push('계산된 평균 페이스와 캡처 표시값이 다릅니다. 거리와 시간을 확인하세요.');if(lines.some(l=>l.confidence<.5))questions.push('인식 확신이 낮은 글자가 있습니다.');return {data,questions,units}}
-export function mergeCaptures(results:ReturnType<typeof parseNRC>[]){const data:RecordData={custom:{}};const questions=results.flatMap(r=>r.questions);for(const key of fields){const values=results.map(r=>r.data[key]).filter((v):v is number=>v!==undefined);if(!values.length)continue;if(values.some(v=>Math.abs(v-values[0])>.01)){questions.push(`${key}: 캡처 간 값이 다릅니다 (${values.join(', ')}). 직접 선택해 입력하세요.`);continue}(data as any)[key]=values[0]}return {data,questions:[...new Set(questions)]}}
+import { type RecordData, pace } from "./model";
+export type OCRLine = {
+  text: string;
+  confidence: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+};
+const fields = [
+  "distance",
+  "seconds",
+  "heartRate",
+  "cadence",
+  "reportedPace",
+] as const;
+type Metric = (typeof fields)[number];
+const labels: Record<Metric, RegExp> = {
+  distance: /거리|distance|^(?:km|킬로미터|mi|miles?)$/i,
+  seconds:
+    /총\s*시간|러닝\s*시간|운동\s*시간|duration|running time|^시간(?:\s|$)|^time(?:\s|$)/i,
+  heartRate: /심박수|heart\s*rate|bpm/i,
+  cadence: /케이던스|cadence|steps\/min|spm/i,
+  reportedPace: /페이스|pace|\/km|\/mi/i,
+};
+function clock(s: string) {
+  const match = s.match(/\b(\d{1,2})[:'’′](\d{2})(?:[:"”″](\d{2}))?/);
+  if (!match) return;
+  const nums = match.slice(1).filter(Boolean).map(Number);
+  if (nums.slice(1).some((n) => n >= 60)) return;
+  return nums.length === 3
+    ? nums[0] * 3600 + nums[1] * 60 + nums[2]
+    : nums[0] * 60 + nums[1];
+}
+function numeric(text: string, key: Metric) {
+  if (key === "seconds" || key === "reportedPace") return clock(text);
+  const m = text
+    .replace(/,/g, ".")
+    .match(/(?:^|\s)(\d+(?:\.\d+)?)(?=\s|[a-z/]|$)/i);
+  if (!m) return;
+  const n = Number(m[1]);
+  if (key === "heartRate" && (n < 30 || n > 250)) return;
+  if (key === "cadence" && (n < 30 || n > 300)) return;
+  return n;
+}
+function close(label: OCRLine, value: OCRLine, li: number, vi: number) {
+  if (
+    label.x !== undefined &&
+    value.x !== undefined &&
+    label.y !== undefined &&
+    value.y !== undefined
+  ) {
+    const dx = Math.abs(
+      label.x + (label.width || 0) / 2 - (value.x + (value.width || 0) / 2),
+    );
+    const dy = Math.abs(label.y - value.y);
+    if (dx > 0.22 || dy > 0.2) return Infinity;
+    return dx * 2 + dy;
+  }
+  return Math.abs(li - vi) <= 1 ? Math.abs(li - vi) : Infinity;
+}
+export function parseNRC(lines: OCRLine[]) {
+  const data: RecordData = { custom: {} };
+  const questions: string[] = [];
+  const units: Record<string, string> = {};
+  for (const key of fields) {
+    const candidates: { value: number; score: number; text: string }[] = [];
+    lines.forEach((line, i) => {
+      if (!labels[key].test(line.text)) return;
+      const inline = numeric(line.text, key);
+      if (inline !== undefined)
+        candidates.push({ value: inline, score: -1, text: line.text });
+      else
+        lines.forEach((value, j) => {
+          if (i === j) return;
+          const n = numeric(value.text, key);
+          const score = close(line, value, i, j);
+          if (n !== undefined && score < Infinity)
+            candidates.push({
+              value: n,
+              score,
+              text: value.text + " " + line.text,
+            });
+        });
+    });
+    candidates.sort((a, b) => a.score - b.score);
+    if (candidates[0]) {
+      const c = candidates[0];
+      let value = c.value;
+      if (/\bmi(?:le)?s?\b/i.test(c.text)) {
+        units[key] = "mi";
+        if (key === "distance") value *= 1.609344;
+        if (key === "reportedPace") value /= 1.609344;
+      } else
+        units[key] =
+          key === "distance" ? "km" : key === "reportedPace" ? "sec/km" : "";
+      (data as any)[key] = value;
+      if (
+        candidates.some(
+          (x) => x.score === c.score && Math.abs(x.value - c.value) > 0.01,
+        )
+      )
+        questions.push(`${key}: 서로 다른 후보가 있습니다. 원본을 확인하세요.`);
+    }
+  }
+  if (data.distance === undefined) questions.push("거리를 확인하세요.");
+  if (data.seconds === undefined) questions.push("러닝 시간을 확인하세요.");
+  const calculated = pace(data);
+  if (
+    calculated !== undefined &&
+    data.reportedPace !== undefined &&
+    Math.abs(calculated - data.reportedPace) > 5
+  )
+    questions.push(
+      "계산된 평균 페이스와 캡처 표시값이 다릅니다. 거리와 시간을 확인하세요.",
+    );
+  if (lines.some((l) => l.confidence < 0.5))
+    questions.push("인식 확신이 낮은 글자가 있습니다.");
+  return { data, questions, units };
+}
+export function mergeCaptures(results: ReturnType<typeof parseNRC>[]) {
+  const data: RecordData = { custom: {} };
+  const questions = results.flatMap((r) => r.questions);
+  for (const key of fields) {
+    const values = results
+      .map((r) => r.data[key])
+      .filter((v): v is number => v !== undefined);
+    if (!values.length) continue;
+    if (values.some((v) => Math.abs(v - values[0]) > 0.01)) {
+      questions.push(
+        `${key}: 캡처 간 값이 다릅니다 (${values.join(", ")}). 직접 선택해 입력하세요.`,
+      );
+      continue;
+    }
+    (data as any)[key] = values[0];
+  }
+  return { data, questions: [...new Set(questions)] };
+}

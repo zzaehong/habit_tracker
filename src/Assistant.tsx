@@ -1,16 +1,317 @@
-import {AttachmentGallery} from './Capture';
-import {useState,useEffect} from 'react';
-import {useLiveQuery} from 'dexie-react-hooks';
-import {db,save,getMeta} from './db';
-import {api,sync} from './sync';
-import {type Activity,type Draft,type Entry,now,today} from '../shared/model';
-import {RecordEditor} from './Editor';
-import {MealEditor} from './Meals';
-let processing=false;
-export async function processDrafts(){if(processing||!(await getMeta('token')))return;processing=true;try{for(const d of await db.entities.where('type').equals('draft').toArray()){if(d.type!=='draft'||d.deleted||!['waiting','processing'].includes(d.status))continue;if(d.attachments.length){const as=await db.entities.bulkGet(d.attachments);if(as.some(a=>!a||a.type!=='attachment'))continue;let ready=true;for(const a of as)if(a?.type==='attachment'&&!await getMeta('uploaded:'+a.hash))ready=false;if(!ready)continue}try{await api('/api/ai/jobs',{method:'POST',body:JSON.stringify({draft:d,retry:d.status==='waiting'})});const job=await (await api('/api/ai/jobs/'+d.id)).json();if(job.status==='review'||job.status==='error')await save({...d,status:job.status,result:job.result,error:job.error,ocr:job.ocr});else if(d.status!=='processing')await save({...d,status:'processing'})}catch{/* 연결 실패 시 대기 상태 보존 */}}}finally{processing=false}}
-export function Assistant({activities}:{activities:Activity[]}){const [open,setOpen]=useState(false),[text,setText]=useState(''),[error,setError]=useState('');const [editing,setEditing]=useState<Entry>();const drafts=useLiveQuery(async()=>(await db.entities.where('type').equals('draft').toArray()).filter((d):d is Draft=>d.type==='draft'&&!d.deleted&&d.status!=='saved'),[])||[];const entries=useLiveQuery(()=>db.entities.where('type').equals('entry').toArray(),[])||[];
- useEffect(()=>{const open=()=>setOpen(true);window.addEventListener('open-assistant',open);const run=()=>{if(document.visibilityState!=='hidden')void processDrafts()};window.addEventListener('sync-complete',run);const timer=setInterval(run,3000);run();return()=>{window.removeEventListener('open-assistant',open);window.removeEventListener('sync-complete',run);clearInterval(timer)}},[]);
- async function confirmed(e:Entry){const draft=await db.entities.get(e.draftId!);if(draft?.type==='draft'&&draft.result){const saved=await db.entities.bulkGet(draft.result.map((_,i)=>`${draft.id}:${i}`));if(saved.every(Boolean))await save({...draft,status:'saved'})}setEditing(undefined)}
- return <><button className="assistant-button" onClick={()=>setOpen(!open)}>✦ 한 문장으로 기록 {drafts.length?`· ${drafts.length}`:''}</button>{open&&<section className="panel space"><h2>오늘의 이야기를 남겨주세요</h2><p className="muted">예: 오늘 5km 32분 뛰었고, 독서는 120쪽까지 읽었어.</p><textarea className="wide" aria-label="자연어 기록" value={text} onChange={e=>setText(e.target.value)} placeholder="원문은 바로 저장되고, 맥미니에 연결되면 정리됩니다."/><button className="primary" disabled={!text.trim()} onClick={async()=>{try{await save({id:crypto.randomUUID(),type:'draft',version:0,updatedAt:now(),createdAt:now(),date:today(),text,status:'waiting',mode:'text',attachments:[]});setText('');await sync();void processDrafts()}catch(e){setError(String(e))}}}>원문 저장 · 정리 요청</button>{error&&<p className="error">{error}</p>}{drafts.map(d=><article className="fieldbox" key={d.id}><small>{{waiting:'AI 정리 대기',processing:'분석 중',review:'확인 후 저장',error:'다시 확인 필요',saved:'완료'}[d.status]}</small><p>{d.text||'러닝 캡처'}</p>{d.mode==='capture'&&<AttachmentGallery ids={d.attachments}/>} {d.ocr&&<details><summary>OCR 원문과 인식 위치</summary><pre>{d.ocr}</pre></details>}{d.error&&<p className="error">{d.error}</p>}{d.status==='error'&&<button onClick={()=>save({...d,status:'waiting',error:undefined})}>다시 시도</button>}{d.status==='review'&&(!d.result?.length?<p>활동을 찾지 못했습니다. 상세 입력으로 기록하거나 원문을 수정해 다시 입력하세요.</p>:d.result.map((r,i)=>{const a=activities.find(a=>a.id===r.activityId);if(!a)return null;const id=`${d.id}:${i}`;const saved=entries.some(e=>e.id===id);return <div className="settingsrow" key={i}><div><strong>{a.name}</strong><p>{r.questions.join(' · ')}</p><small>{r.date}</small></div><button disabled={saved} onClick={()=>setEditing({id,type:'entry',version:0,updatedAt:now(),activityId:a.id,date:r.date,timezone:'Asia/Seoul',done:true,data:r.data,definition:a,source:d.mode==='capture'?'capture':'ai',draftId:d.id,attachments:d.attachments})}>{saved?'저장됨':'확인·수정·저장'}</button></div>}))}<button onClick={()=>save({...d,deleted:true})}>초안 닫기</button></article>)}</section>}{editing&&(editing.definition.kind==='meal'?<MealEditor entry={editing} onSaved={confirmed} onClose={()=>setEditing(undefined)}/>:<RecordEditor activity={editing.definition} entry={editing} onSaved={confirmed} onClose={()=>setEditing(undefined)}/>)}</>
+import { planNutrition } from "../shared/meals";
+import { AttachmentGallery } from "./Capture";
+import { useState, useEffect } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db, save, getMeta } from "./db";
+import { api, sync } from "./sync";
+import {
+  type Activity,
+  type Draft,
+  type Entry,
+  type MealPlan,
+  now,
+  today,
+} from "../shared/model";
+import { RecordEditor } from "./Editor";
+import { MealEditor } from "./Meals";
+let processing = false;
+export async function processDrafts() {
+  if (processing || !(await getMeta("token"))) return;
+  processing = true;
+  try {
+    for (const d of await db.entities.where("type").equals("draft").toArray()) {
+      if (
+        d.type !== "draft" ||
+        d.deleted ||
+        !["waiting", "processing"].includes(d.status)
+      )
+        continue;
+      if (d.attachments.length) {
+        const as = await db.entities.bulkGet(d.attachments);
+        if (as.some((a) => !a || a.type !== "attachment")) continue;
+        let ready = true;
+        for (const a of as)
+          if (
+            a?.type === "attachment" &&
+            !(await getMeta("uploaded:" + a.hash))
+          )
+            ready = false;
+        if (!ready) continue;
+      }
+      try {
+        await api("/api/ai/jobs", {
+          method: "POST",
+          body: JSON.stringify({ draft: d, retry: d.status === "waiting" }),
+        });
+        const job = await (await api("/api/ai/jobs/" + d.id)).json();
+        if (job.status === "review" || job.status === "error")
+          await save({
+            ...d,
+            status: job.status,
+            result: job.result,
+            error: job.error,
+            ocr: job.ocr,
+          });
+        else if (d.status !== "processing")
+          await save({ ...d, status: "processing" });
+      } catch {
+        /* 연결 실패 시 대기 상태 보존 */
+      }
+    }
+  } finally {
+    processing = false;
+  }
 }
-export function AISettings(){const [model,setModel]=useState('qwen3:4b'),[message,setMessage]=useState('');return <section className="panel"><h2>로컬 AI</h2><label>Ollama 모델<input value={model} onChange={e=>setModel(e.target.value)}/></label><div className="row"><button onClick={async()=>{try{const s=await (await api('/api/ai/settings')).json();setModel(s.model);setMessage(s.available?'Ollama 연결됨':'Ollama 연결 대기')}catch(e){setMessage(String(e))}}}>상태 확인</button><button onClick={async()=>{try{await api('/api/ai/settings',{method:'PUT',body:JSON.stringify({model})});setMessage('모델 설정 저장됨. 모델 다운로드는 맥미니에서 진행하세요.')}catch(e){setMessage(String(e))}}}>모델 설정 저장</button></div><p role="status">{message}</p></section>}
+export function Assistant({ activities }: { activities: Activity[] }) {
+  const [open, setOpen] = useState(false),
+    [text, setText] = useState(""),
+    [error, setError] = useState("");
+  const [editing, setEditing] = useState<Entry>();
+  const drafts =
+    useLiveQuery(
+      async () =>
+        (await db.entities.where("type").equals("draft").toArray()).filter(
+          (d): d is Draft =>
+            d.type === "draft" && !d.deleted && d.status !== "saved",
+        ),
+      [],
+    ) || [];
+  const entries =
+    useLiveQuery(
+      () => db.entities.where("type").equals("entry").toArray(),
+      [],
+    ) || [];
+  useEffect(() => {
+    const open = () => setOpen(true);
+    window.addEventListener("open-assistant", open);
+    const run = () => {
+      if (document.visibilityState !== "hidden") void processDrafts();
+    };
+    window.addEventListener("sync-complete", run);
+    const timer = setInterval(run, 3000);
+    run();
+    return () => {
+      window.removeEventListener("open-assistant", open);
+      window.removeEventListener("sync-complete", run);
+      clearInterval(timer);
+    };
+  }, []);
+  async function confirmed(e: Entry) {
+    const draft = await db.entities.get(e.draftId!);
+    if (draft?.type === "draft" && draft.result) {
+      const saved = await db.entities.bulkGet(
+        draft.result.map((_, i) => `${draft.id}:${i}`),
+      );
+      if (saved.every(Boolean)) await save({ ...draft, status: "saved" });
+    }
+    setEditing(undefined);
+  }
+  return (
+    <>
+      <button className="assistant-button" onClick={() => setOpen(!open)}>
+        ✦ 한 문장으로 기록 {drafts.length ? `· ${drafts.length}` : ""}
+      </button>
+      {open && (
+        <section className="panel space">
+          <h2>오늘의 이야기를 남겨주세요</h2>
+          <p className="muted">
+            예: 오늘 5km 32분 뛰었고, 독서는 120쪽까지 읽었어.
+          </p>
+          <textarea
+            className="wide"
+            aria-label="자연어 기록"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="원문은 바로 저장되고, 맥미니에 연결되면 정리됩니다."
+          />
+          <button
+            className="primary"
+            disabled={!text.trim()}
+            onClick={async () => {
+              try {
+                await save({
+                  id: crypto.randomUUID(),
+                  type: "draft",
+                  version: 0,
+                  updatedAt: now(),
+                  createdAt: now(),
+                  date: today(),
+                  text,
+                  status: "waiting",
+                  mode: "text",
+                  attachments: [],
+                });
+                setText("");
+                await sync();
+                void processDrafts();
+              } catch (e) {
+                setError(String(e));
+              }
+            }}
+          >
+            원문 저장 · 정리 요청
+          </button>
+          {error && <p className="error">{error}</p>}
+          {drafts.map((d) => (
+            <article className="fieldbox" key={d.id}>
+              <small>
+                {
+                  {
+                    waiting: "AI 정리 대기",
+                    processing: "분석 중",
+                    review: "확인 후 저장",
+                    error: "다시 확인 필요",
+                    saved: "완료",
+                  }[d.status]
+                }
+              </small>
+              <p>{d.text || "러닝 캡처"}</p>
+              {d.mode === "capture" && (
+                <AttachmentGallery ids={d.attachments} />
+              )}{" "}
+              {d.ocr && (
+                <details>
+                  <summary>OCR 원문과 인식 위치</summary>
+                  <pre>{d.ocr}</pre>
+                </details>
+              )}
+              {d.error && <p className="error">{d.error}</p>}
+              {d.status === "error" && (
+                <button
+                  onClick={() =>
+                    save({ ...d, status: "waiting", error: undefined })
+                  }
+                >
+                  다시 시도
+                </button>
+              )}
+              {d.status === "review" &&
+                (!d.result?.length ? (
+                  <p>
+                    활동을 찾지 못했습니다. 상세 입력으로 기록하거나 원문을
+                    수정해 다시 입력하세요.
+                  </p>
+                ) : (
+                  d.result.map((r, i) => {
+                    const a = activities.find((a) => a.id === r.activityId);
+                    if (!a) return null;
+                    const id = `${d.id}:${i}`;
+                    const saved = entries.some((e) => e.id === id);
+                    return (
+                      <div className="settingsrow" key={i}>
+                        <div>
+                          <strong>{a.name}</strong>
+                          <p>{r.questions.join(" · ")}</p>
+                          <small>{r.date}</small>
+                        </div>
+                        <button
+                          disabled={saved}
+                          onClick={async () => {
+                            const plans = await db.entities
+                              .where("type")
+                              .equals("mealPlan")
+                              .toArray();
+                            const plan = plans.find(
+                              (p): p is MealPlan =>
+                                p.type === "mealPlan" &&
+                                !p.deleted &&
+                                p.slot === r.data.slot,
+                            );
+                            setEditing({
+                              id,
+                              type: "entry",
+                              version: 0,
+                              updatedAt: now(),
+                              activityId: a.id,
+                              date: r.date,
+                              timezone: "Asia/Seoul",
+                              done: true,
+                              data:
+                                a.kind === "meal" &&
+                                r.data.mealStatus === "planned"
+                                  ? { ...r.data, ...planNutrition(plan) }
+                                  : r.data,
+                              definition: a,
+                              source: d.mode === "capture" ? "capture" : "ai",
+                              draftId: d.id,
+                              attachments: d.attachments,
+                            });
+                          }}
+                        >
+                          {saved ? "저장됨" : "확인·수정·저장"}
+                        </button>
+                      </div>
+                    );
+                  })
+                ))}
+              <button onClick={() => save({ ...d, deleted: true })}>
+                초안 닫기
+              </button>
+            </article>
+          ))}
+        </section>
+      )}
+      {editing &&
+        (editing.definition.kind === "meal" ? (
+          <MealEditor
+            entry={editing}
+            onSaved={confirmed}
+            onClose={() => setEditing(undefined)}
+          />
+        ) : (
+          <RecordEditor
+            activity={editing.definition}
+            entry={editing}
+            onSaved={confirmed}
+            onClose={() => setEditing(undefined)}
+          />
+        ))}
+    </>
+  );
+}
+export function AISettings() {
+  const [model, setModel] = useState("qwen3:4b"),
+    [message, setMessage] = useState("");
+  return (
+    <section className="panel">
+      <h2>로컬 AI</h2>
+      <label>
+        Ollama 모델
+        <input value={model} onChange={(e) => setModel(e.target.value)} />
+      </label>
+      <div className="row">
+        <button
+          onClick={async () => {
+            try {
+              const s = await (await api("/api/ai/settings")).json();
+              setModel(s.model);
+              setMessage(s.available ? "Ollama 연결됨" : "Ollama 연결 대기");
+            } catch (e) {
+              setMessage(String(e));
+            }
+          }}
+        >
+          상태 확인
+        </button>
+        <button
+          onClick={async () => {
+            try {
+              await api("/api/ai/settings", {
+                method: "PUT",
+                body: JSON.stringify({ model }),
+              });
+              setMessage(
+                "모델 설정 저장됨. 모델 다운로드는 맥미니에서 진행하세요.",
+              );
+            } catch (e) {
+              setMessage(String(e));
+            }
+          }}
+        >
+          모델 설정 저장
+        </button>
+      </div>
+      <p role="status">{message}</p>
+    </section>
+  );
+}
