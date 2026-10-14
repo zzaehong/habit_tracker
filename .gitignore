@@ -1,0 +1,11 @@
+node_modules/
+dist/
+runtime/
+.env
+.env.*
+*.db
+*.db-*
+*.sqlite*
+playwright-report/
+test-results/
+.DS_Store
