@@ -60,3 +60,9 @@
 - 러닝 시간 입력을 분:초로 바꾸고 iPhone에서 콜론 입력 가능한 키보드를 사용.
 - 실제 iPhone, 물리적 잠자기 복귀, Tailscale 외부 연결, Ollama 실모델 30개 예제/성능, 실제 NRC 캡처 정확도는 NOT RUN. 각각 실기기 접근·서비스 설치/계정·원본 캡처가 필요. LaunchAgent는 생성/문법 검증만 완료했고 시스템 등록은 미실행.
 - 작업 재개 시 fetch PASS. 로컬 develop에 upstream이 없어 pull은 생략. Starting develop HEAD: 55e2a9b3cc66b23dfe0fafaa0fd41f5eee8f44ee. main: 19eff3e30c831d7db7676dc25915feb84fa2bfda.
+
+## iOS foundation — 2026-10-16
+- Starting develop: 52e3229. origin/develop 추적 설정 후 fetch/pull --ff-only PASS. main 19eff3e 유지.
+- 최초 swift test FAIL: 샌드박스 밖 Swift compiler cache 쓰기 권한. 승인된 실행에서 6 tests PASS.
+- 날짜·주 경계, 빠른 완료 미측정, 순서 독립 XP, 수정/삭제 재계산, 책 다시 읽기·타이머 복원 검증 PASS.
+- 시뮬레이터 최초 조회 FAIL: sandbox CoreSimulator 접근. 승인된 조회에서 iOS 27 런타임 확인.
