@@ -66,3 +66,7 @@
 - 최초 swift test FAIL: 샌드박스 밖 Swift compiler cache 쓰기 권한. 승인된 실행에서 6 tests PASS.
 - 날짜·주 경계, 빠른 완료 미측정, 순서 독립 XP, 수정/삭제 재계산, 책 다시 읽기·타이머 복원 검증 PASS.
 - 시뮬레이터 최초 조회 FAIL: sandbox CoreSimulator 접근. 승인된 조회에서 iOS 27 런타임 확인.
+- ios-foundation develop 회귀: Swift 6 tests, 웹 31 tests/typecheck/build, 웹 E2E 5/5 PASS.
+
+## iOS backup migration
+- Swift 10 tests PASS: JSON/ZIP 왕복, 해시/CRC/경로 검증, ID 충돌 선택, 기존 원문 보존, 미상 페이지, 소급 XP 꺼짐, NRC 단위·충돌.
