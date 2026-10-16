@@ -36,6 +36,7 @@ struct HistoryView: View {
           } label: {
             VStack(alignment: .leading, spacing: 6) {
               HStack {
+                ActivityEmblem(icon: e.definition.icon)
                 Text(e.definition.name).font(.headline)
                 Spacer()
                 Text(e.date).font(.caption).foregroundStyle(.secondary)
@@ -61,7 +62,9 @@ struct HistoryView: View {
             Button("삭제", role: .destructive) { deleting = e.id }
           }
         }
-      }.navigationTitle("기록").sheet(item: $route) {
+      }.scrollContentBackground(.hidden).background(Palette.background).navigationTitle("기록").sheet(
+        item: $route
+      ) {
         EntryEditor(activity: $0.activity, entry: $0.entry, day: $0.day)
       }.alert(
         "기록을 삭제할까요?",
@@ -94,7 +97,7 @@ struct GrowthView: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          Text("실천이 쌓인 모습").font(.title2.bold())
+          Text("실천이 쌓인 모습").font(.system(.largeTitle, design: .rounded, weight: .bold))
           Picker("기간", selection: $period) {
             Text("7일").tag(7)
             Text("28일").tag(28)
@@ -134,7 +137,7 @@ struct GrowthView: View {
             let level = Progress.level(xp)
             VStack(alignment: .leading, spacing: 12) {
               Label("작은 보상", systemImage: "sparkles").foregroundStyle(Palette.gold)
-              Text("레벨 \(level.level)").font(.title.bold())
+              Text("레벨 \(level.level)").font(.system(.largeTitle, design: .rounded, weight: .bold))
               Text("누적 \(xp) XP")
               ProgressView(value: Double(level.earned), total: Double(level.required)).tint(
                 Palette.gold)
@@ -162,7 +165,10 @@ struct GrowthView: View {
       $0.activityID == a.id && $0.date >= Day.add(start, -length) && $0.date < start
     }.compactMap(\.amount)
     return VStack(alignment: .leading, spacing: 12) {
-      Label(a.name, systemImage: a.icon).font(.headline)
+      HStack(spacing: 12) {
+        ActivityEmblem(icon: a.icon)
+        Text(a.name).font(.title3.bold())
+      }
       Text("활동량").font(.subheadline.bold()).foregroundStyle(Palette.green)
       Text(values.isEmpty ? "측정값 없음" : "\(a.metric.display(total))\(a.metric.unit) 쌓았어요").font(
         .title2.bold())

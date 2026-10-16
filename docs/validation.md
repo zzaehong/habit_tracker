@@ -102,3 +102,12 @@
 - PASS: Simulator 앱 및 UI 테스트 컴파일 (runtime/growth-test-build.log).
 - FAIL: UI 테스트 실행 명령 — CoreSimulator 1171.7.0과 Xcode 요구 1174.9.2 불일치로 대상 기기 검색 실패 (runtime/growth-feature.log, growth-feature.xcresult). 테스트 assertion 실패가 아니라 실행 환경 실패. 서비스 재시작 후에도 simctl 조회가 응답하지 않아 중단.
 - NOT RUN: 수정한 UI 테스트 실제 실행, 화면 캡처 검토, 실물 iPhone·VoiceOver 확인. UI 테스트에는 오늘 XP 15, 빠른 완료 XP 10 및 취소 후 0, 성장 지표 제목 검증을 추가했고 컴파일만 확인함.
+
+## 2026-10-17 UI 디자인 정리
+- 시작 develop: 59e1b03090fc1be40a2adc4c02850a6491daa546, feature/ios-visual-polish.
+- 공통 카드·아이콘·버튼 모양, 오늘 XP 요약과 단계 막대, 온보딩·기록·성장 화면의 시각 계층을 정리함.
+- PASS: 핵심 테스트 18개 (runtime/design-core.log), Simulator 테스트 빌드 (runtime/design-build.log).
+- PASS: iPhone 18 Pro iOS 27 시뮬레이터 UI 테스트 5개 (runtime/design-ui.xcresult). 이전 CoreSimulator 실행 문제는 이번 실행에서 재현되지 않음.
+- PASS: 성장 및 큰 글자 다크 온보딩 캡처를 직접 확인 (runtime/design-images).
+- FAIL: 없음.
+- NOT RUN: 실제 iPhone, VoiceOver 음성 탐색, iOS 18 기기 확인.
