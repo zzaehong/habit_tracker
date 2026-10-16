@@ -1,6 +1,34 @@
 import XCTest
 
 final class ChagokUITests: XCTestCase {
+  @MainActor func testActivityEditingAndDeletion() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--uitesting"]
+    app.launch()
+    app.buttons["template-pages"].tap()
+    XCTAssertTrue(app.textFields["threshold-1"].exists)
+    XCTAssertTrue(app.textFields["threshold-2"].exists)
+    XCTAssertTrue(app.textFields["threshold-3"].exists)
+    app.buttons["activity-save"].tap()
+    app.buttons["onboarding-finish"].tap()
+    app.buttons["최소 5쪽 달성"].tap()
+    app.tabBars.buttons["설정"].tap()
+    app.buttons["독서"].tap()
+    XCTAssertFalse(app.textFields["activity-name"].isEnabled)
+    XCTAssertFalse(app.buttons["activity-save"].exists)
+    app.buttons["편집"].tap()
+    XCTAssertTrue(app.textFields["activity-name"].isEnabled)
+    for _ in 0..<8 where !app.buttons["활동 삭제"].isHittable { app.swipeUp() }
+    app.buttons["활동 삭제"].tap()
+    app.alerts.buttons["취소"].tap()
+    XCTAssertTrue(app.buttons["activity-save"].exists)
+    app.buttons["활동 삭제"].tap()
+    app.alerts.buttons["삭제"].tap()
+    XCTAssertFalse(app.buttons["독서"].exists)
+    app.tabBars.buttons["오늘"].tap()
+    XCTAssertTrue(app.staticTexts["오늘 0 XP"].exists)
+  }
+
   @MainActor func testReadingOnboardingAndGrowth() {
     let app = XCUIApplication()
     app.launchArguments = ["--uitesting"]

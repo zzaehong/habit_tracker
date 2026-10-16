@@ -3,6 +3,15 @@ import XCTest
 @testable import ChagokCore
 
 final class ProgressTests: XCTestCase {
+  func testActivityColorBackwardsCompatibility() throws {
+    var activity = Activity(name: "독서", metric: .pages, date: "2026-10-17")
+    let oldData = try JSONEncoder().encode(activity)
+    XCTAssertNil(try JSONDecoder().decode(Activity.self, from: oldData).iconColor)
+    activity.iconColor = "purple"
+    XCTAssertEqual(
+      try JSONDecoder().decode(Activity.self, from: JSONEncoder().encode(activity)), activity)
+  }
+
   func testQuickCompletionDoesNotInventPagesOrStack() throws {
     let a = Activity(name: "독서", metric: .pages, date: "2026-10-01")
     var e = Entry(activity: a, date: "2026-10-01", timezone: "Asia/Seoul")
