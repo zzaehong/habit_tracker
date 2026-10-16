@@ -145,4 +145,17 @@ final class ProgressTests: XCTestCase {
     XCTAssertEqual(Progress.level(300).level, 3)
   }
 
+  func testSuccessiveTimezoneChangesActivateAtCurrentZoneMidnight() {
+    var s = Snapshot()
+    s.timezone = "Asia/Seoul"
+    s.zoneChanges = [
+      ZoneChange(effective: "2026-10-02", zone: "America/New_York"),
+      ZoneChange(effective: "2026-10-04", zone: "Asia/Tokyo"),
+    ]
+    let parser = ISO8601DateFormatter()
+    XCTAssertEqual(
+      s.activeZone(now: parser.date(from: "2026-10-04T01:00:00Z")!), "America/New_York")
+    XCTAssertEqual(s.activeZone(now: parser.date(from: "2026-10-04T05:00:00Z")!), "Asia/Tokyo")
+  }
+
 }

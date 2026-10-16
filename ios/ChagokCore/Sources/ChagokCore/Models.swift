@@ -244,9 +244,12 @@ public struct Snapshot: Codable, Equatable, Sendable {
   public init() {}
   public func today(now: Date = .now) -> String { Day.string(now, zone: activeZone(now: now)) }
   public func activeZone(now: Date = .now) -> String {
-    let baseDay = Day.string(now, zone: timezone)
-    return zoneChanges.filter { $0.effective <= baseDay }.sorted { $0.effective < $1.effective }
-      .last?.zone ?? timezone
+    var current = timezone
+    for change in zoneChanges.sorted(by: { $0.effective < $1.effective }) {
+      guard change.effective <= Day.string(now, zone: current) else { break }
+      current = change.zone
+    }
+    return current
   }
   public func validate() throws {
     guard version == 2, TimeZone(identifier: timezone) != nil else {
