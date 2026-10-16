@@ -29,36 +29,38 @@ struct HistoryView: View {
             "아직 기록이 없어요", systemImage: "book.closed", description: Text("오늘 화면에서 작은 실천을 남겨 보세요."))
         }
         ForEach(entries) { e in
-          Button {
-            if let a = store.state.activities.first(where: { $0.id == e.activityID }) {
-              route = RecordRoute(activity: a, entry: e, day: e.date)
-            }
-          } label: {
-            VStack(alignment: .leading, spacing: 6) {
-              HStack {
-                ActivityEmblem(icon: e.definition.icon, color: e.definition.iconColor)
-                Text(e.definition.name).font(.headline)
-                Spacer()
+          VStack(alignment: .leading, spacing: 6) {
+            HStack {
+              ActivityEmblem(icon: e.definition.icon, color: e.definition.iconColor)
+              Text(e.definition.name).font(.headline)
+              Spacer()
+              VStack(alignment: .trailing, spacing: 8) {
                 Text(e.date).font(.caption).foregroundStyle(.secondary)
-              }
-              if let amount = e.amount {
-                Text("\(e.definition.metric.display(amount))\(e.definition.metric.unit)")
-              } else {
-                Text(
-                  e.confirmedMinimum
-                    ? "최소 달성 · 수치 미기록" : e.legacyDone == true ? "이전 완료 기록" : "수치 미기록"
-                ).foregroundStyle(.secondary)
-              }
-              if let rule = e.definition.rule(on: e.date), rule.schedule == .once,
-                e.date > rule.start
-              {
-                Text("지연 완료 · 예정일 \(rule.start)").font(.caption).foregroundStyle(.secondary)
-              }
-              if !e.note.isEmpty {
-                Text(e.note).lineLimit(2).font(.subheadline).foregroundStyle(.secondary)
+                Button("수정", systemImage: "square.and.pencil") {
+                  if let a = store.state.activities.first(where: { $0.id == e.activityID }) {
+                    route = RecordRoute(activity: a, entry: e, day: e.date)
+                  }
+                }.buttonStyle(.bordered).accessibilityIdentifier("edit-entry-" + e.id)
               }
             }
-          }.buttonStyle(.plain).swipeActions {
+            if let amount = e.amount {
+              Text("\(e.definition.metric.display(amount))\(e.definition.metric.unit)")
+            } else {
+              Text(
+                e.confirmedMinimum
+                  ? "최소 달성 · 수치 미기록" : e.legacyDone == true ? "이전 완료 기록" : "수치 미기록"
+              ).foregroundStyle(.secondary)
+            }
+            if let rule = e.definition.rule(on: e.date), rule.schedule == .once,
+              e.date > rule.start
+            {
+              Text("지연 완료 · 예정일 \(rule.start)").font(.caption).foregroundStyle(.secondary)
+            }
+            if !e.note.isEmpty {
+              Text(e.note).lineLimit(2).font(.subheadline).foregroundStyle(.secondary)
+            }
+
+          }.swipeActions {
             Button("삭제", role: .destructive) { deleting = e.id }
           }
         }
@@ -97,7 +99,6 @@ struct GrowthView: View {
     NavigationStack {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
-          Text("실천이 쌓인 모습").font(.system(.largeTitle, design: .rounded, weight: .bold))
           Picker("기간", selection: $period) {
             Text("7일").tag(7)
             Text("28일").tag(28)
@@ -167,11 +168,11 @@ struct GrowthView: View {
     return VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 12) {
         ActivityEmblem(icon: a.icon, color: a.iconColor)
-        Text(a.name).font(.title3.bold())
+        Text(a.name).font(.system(.title3, design: .rounded, weight: .semibold))
       }
       Text("활동량").font(.subheadline.bold()).foregroundStyle(Palette.green)
       Text(values.isEmpty ? "측정값 없음" : "\(a.metric.display(total))\(a.metric.unit) 쌓았어요").font(
-        .title2.bold())
+        .system(.title2, design: .rounded, weight: .semibold))
       if !values.isEmpty {
         Text("기록당 평균 \(a.metric.display(total/Double(values.count)))\(a.metric.unit)").font(
           .subheadline

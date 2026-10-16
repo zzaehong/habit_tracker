@@ -119,3 +119,13 @@
 - PASS: 기존 UI 5개 (runtime/settings-ui.xcresult), 신규 편집 잠금·삭제 취소·삭제 확정·XP 정정 UI 테스트 (runtime/settings-edit.xcresult).
 - FAIL: 없음.
 - NOT RUN: 실제 iPhone, VoiceOver 음성, 알림 실제 전달/취소 확인.
+
+## 2026-10-17 알림·기록 동작·저장 피드백
+- 시작 develop a74e1c79b254763f9ad1ad1ee73b44db72e7b00a, feature/activity-reminders-record-actions.
+- 색상 아이콘 미리보기, 활동별 알림 시각 저장 및 전체 알림 스위치, 날짜 아래 수정 버튼과 수정 화면 삭제 구현.
+- 설정의 신규 활동 판정을 ID 기준으로 통일. 완료형의 잘못된 다단계 입력 차단, 저장 검증 오류를 알림창으로 노출. 불필요한 문구 제거 및 둥근 글꼴·버튼·카드 조정.
+- PASS: 핵심 테스트 20개 (runtime/reminders-revised-core.log), UI 8개 (runtime/reminders-revised-ui.xcresult), 카드 외곽 그림자 수정 후 독서·성장 UI 재검증 (runtime/reminders-visual.xcresult).
+- PASS: 새 활동 생성/저장 오류 안내/오늘 표시, 미리보기 선택, 기록 수정/삭제 취소/확정, 알림 일정·과거 시각 제외·주간 일정·보관 제외·60개 제한·백업 왕복.
+- FAIL 보존: 첫 UI 실행의 3단계 입력 존재 검사 실패 (runtime/reminders-ui.xcresult). 길어진 폼의 화면 밖 행을 스크롤 없이 검사한 테스트를 수정한 뒤 통과.
+- 시각 확인: runtime/reminders-revised-images 및 runtime/reminders-visual-images. 카드 그림자가 글자에 겹친 것을 발견해 compositingGroup 적용 후 캡처에서 해결 확인.
+- NOT RUN: 실물 iPhone, 알림 실제 전달·전체 스위치와 권한 거절의 시스템 통합 검증, 기존 예약의 첫 실행 이전 실기기 검증, VoiceOver 음성.

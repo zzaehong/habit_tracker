@@ -37,14 +37,23 @@ struct ActivityEditor: View {
               Image(systemName: icon).tag(icon).accessibilityLabel(icon)
             }
           }
-          Picker(
-            "아이콘 색상",
-            selection: Binding(
-              get: { activity.iconColor ?? "green" }, set: { activity.iconColor = $0 }
-            )
-          ) {
+          Text("아이콘 색상").font(.subheadline)
+          LazyVGrid(columns: [GridItem(.adaptive(minimum: 54))], spacing: 12) {
             ForEach(Array(Palette.colorNames.enumerated()), id: \.element) { index, color in
-              Text(Palette.colorTitles[index]).tag(color)
+              Button {
+                activity.iconColor = color
+              } label: {
+                ActivityEmblem(icon: activity.icon, color: color)
+                  .overlay(alignment: .bottomTrailing) {
+                    if (activity.iconColor ?? "green") == color {
+                      Image(systemName: "checkmark.circle.fill").font(.caption)
+                        .foregroundStyle(.white, Palette.activityColor(color))
+                    }
+                  }
+              }.buttonStyle(.plain)
+                .accessibilityLabel(Palette.colorTitles[index])
+                .accessibilityAddTraits((activity.iconColor ?? "green") == color ? .isSelected : [])
+                .accessibilityIdentifier("icon-color-" + color)
             }
           }
           HStack {
@@ -64,17 +73,21 @@ struct ActivityEditor: View {
         }
         if rule != nil {
           Section("3 · 작은 실천의 기준") {
-            ForEach(0..<3, id: \.self) { index in
+            ForEach(0..<(activity.metric == .completion ? 1 : 3), id: \.self) { index in
               HStack {
                 Text("\(index + 1)단계")
                 UnitInput(
                   title: index == 0 ? "최소 기준" : "선택 입력",
                   text: $thresholds[index], unit: activity.metric.unit,
-                  identifier: "threshold-\(index + 1)")
+                  identifier: "threshold-\(index + 1)"
+                ).disabled(activity.metric == .completion)
               }
             }
-            Text("1단계는 필수예요. 2·3단계는 원하는 만큼, 앞 단계보다 큰 값으로 입력하세요.")
-              .font(.caption).foregroundStyle(.secondary)
+            Text(
+              activity.metric == .completion
+                ? "완료형은 한 번의 수행으로 달성해요. 여러 단계를 원하면 횟수를 선택하세요." : "1단계 필수 · 2·3단계 선택 · 작은 값부터 입력"
+            )
+            .font(.caption).foregroundStyle(.secondary)
           }
           Section("4 · 나에게 맞는 일정") {
             Picker("반복", selection: Binding(get: { rule!.schedule }, set: { rule!.schedule = $0 }))
@@ -109,6 +122,28 @@ struct ActivityEditor: View {
             }
           }
         }
+        Section("활동 알림") {
+          Toggle(
+            "예정일에 알림",
+            isOn: Binding(
+              get: { activity.reminderMinute != nil },
+              set: { activity.reminderMinute = $0 ? 540 : nil }))
+          if activity.reminderMinute != nil {
+            DatePicker(
+              "알림 시각",
+              selection: Binding(
+                get: {
+                  Calendar.current.startOfDay(for: .now).addingTimeInterval(
+                    Double(activity.reminderMinute ?? 540) * 60)
+                },
+                set: {
+                  let parts = Calendar.current.dateComponents([.hour, .minute], from: $0)
+                  activity.reminderMinute = (parts.hour ?? 9) * 60 + (parts.minute ?? 0)
+                }), displayedComponents: .hourAndMinute)
+          }
+          Text("전체 알림은 설정에서 켜고 끌 수 있어요. 주 N회는 월요일에 안내하며, 앱을 열 때 향후 28일의 가까운 알림부터 최대 60개를 갱신해요.")
+            .font(.caption).foregroundStyle(.secondary)
+        }
         Section("더 남기고 싶은 내용 · 선택") {
           ForEach(activity.fields) { f in
             Button {
@@ -130,7 +165,7 @@ struct ActivityEditor: View {
             Button("활동 삭제", role: .destructive) { deleting = true }
           }
         }
-        if let failure { Text(failure).foregroundStyle(.red) }
+
       }.disabled(!canEdit).environment(\.editMode, .constant(canEdit ? .active : .inactive))
         .navigationTitle(isNew ? "활동 만들기" : "활동 설정").toolbar {
           ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
@@ -175,6 +210,16 @@ struct ActivityEditor: View {
         } message: {
           Text("이 활동의 기록과 XP도 삭제되며 되돌릴 수 없어요. 책과 첨부 원본은 보존합니다. 기록을 남기려면 활동 보관을 사용하세요.")
         }
+        .alert(
+          "저장할 수 없어요",
+          isPresented: Binding(
+            get: { failure != nil }, set: { if !$0 { failure = nil } }
+          )
+        ) {
+          Button("확인") { failure = nil }
+        } message: {
+          Text(failure ?? "")
+        }
         .sheet(item: $field) { f in
           FieldEditor(
             field: f, locked: hasEntries && activity.fields.contains(where: { $0.id == f.id })
@@ -196,7 +241,7 @@ struct ActivityEditor: View {
   }
   private func save() {
     do {
-      guard var next = rule else { return }
+      guard var next = rule else { throw AppError.invalid("활동 설정을 준비 중이에요. 다시 저장해 주세요.") }
       let inputs = thresholds.map { $0.trimmingCharacters(in: .whitespaces) }
       guard !inputs[0].isEmpty, !(inputs[1].isEmpty && !inputs[2].isEmpty) else {
         throw AppError.invalid("1단계부터 순서대로 입력하세요.")
@@ -238,6 +283,16 @@ struct ActivityEditor: View {
           s.activities.append(activity)
         }
       }) {
+        if activity.reminderMinute != nil {
+          Task {
+            do {
+              let allowed = try await UNUserNotificationCenter.current().requestAuthorization(
+                options: [.alert, .sound])
+              if !allowed { store.error = "활동은 저장했지만 알림 권한이 꺼져 있어요. iPhone 설정에서 차곡 알림을 허용하세요." }
+              store.refreshReminders()
+            } catch { store.error = "알림 권한 확인 실패: \(error.localizedDescription)" }
+          }
+        }
         dismiss()
       }
     } catch { failure = error.localizedDescription }

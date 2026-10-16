@@ -162,3 +162,31 @@ public enum Progress {
     return field.aggregate == .sum ? total : total / Double(values.count)
   }
 }
+
+public struct ReminderPlan: Sendable {
+  public let id: String
+  public let name: String
+  public let date: Date
+}
+extension Progress {
+  public static func reminders(_ snapshot: Snapshot, now: Date) -> [ReminderPlan] {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TimeZone(identifier: snapshot.activeZone(now: now)) ?? .current
+    var plans: [ReminderPlan] = []
+    let today = snapshot.today(now: now)
+    for day in Day.range(today, Day.add(today, 27)) {
+      for activity in snapshot.activities where !activity.archived {
+        guard let minute = activity.reminderMinute, due(activity, day),
+          activity.rule(on: day)?.schedule != .weekly || Day.weekday(day) == 2
+        else { continue }
+        let pieces = day.split(separator: "-").compactMap { Int($0) }
+        let components = DateComponents(
+          year: pieces[0], month: pieces[1], day: pieces[2],
+          hour: minute / 60, minute: minute % 60)
+        guard let date = calendar.date(from: components), date > now else { continue }
+        plans.append(ReminderPlan(id: activity.id + "|" + day, name: activity.name, date: date))
+      }
+    }
+    return Array(plans.sorted { $0.date == $1.date ? $0.id < $1.id : $0.date < $1.date }.prefix(60))
+  }
+}
