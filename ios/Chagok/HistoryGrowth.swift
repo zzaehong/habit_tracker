@@ -36,7 +36,7 @@ struct HistoryView: View {
           } label: {
             VStack(alignment: .leading, spacing: 6) {
               HStack {
-                ActivityEmblem(icon: e.definition.icon)
+                ActivityEmblem(icon: e.definition.icon, color: e.definition.iconColor)
                 Text(e.definition.name).font(.headline)
                 Spacer()
                 Text(e.date).font(.caption).foregroundStyle(.secondary)
@@ -166,7 +166,7 @@ struct GrowthView: View {
     }.compactMap(\.amount)
     return VStack(alignment: .leading, spacing: 12) {
       HStack(spacing: 12) {
-        ActivityEmblem(icon: a.icon)
+        ActivityEmblem(icon: a.icon, color: a.iconColor)
         Text(a.name).font(.title3.bold())
       }
       Text("활동량").font(.subheadline.bold()).foregroundStyle(Palette.green)
