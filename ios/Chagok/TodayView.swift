@@ -23,8 +23,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 18) {
           DatePicker("활동 날짜", selection: $date, in: ...Date(), displayedComponents: .date)
             .datePickerStyle(.compact)
-          Text("오늘의 작은 실천").font(.system(.largeTitle, design: .rounded, weight: .bold))
-          Text("완벽하지 않아도 괜찮아요. 한 번의 실천부터.").foregroundStyle(.secondary)
+          Text("오늘 할 일").font(.system(.title2, design: .rounded, weight: .semibold))
           if store.state.showRewards {
             let earned = store.state.activities.reduce(0) {
               $0 + Progress.daily($1, day, store.state.entries, rewardOnly: true).xp
@@ -128,7 +127,7 @@ struct TodayView: View {
     return VStack(alignment: .leading, spacing: 14) {
       HStack {
         ActivityEmblem(icon: a.icon, color: a.iconColor)
-        Text(a.name).font(.title3.bold())
+        Text(a.name).font(.system(.title3, design: .rounded, weight: .semibold))
         Spacer()
         if progress.satisfied {
           Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green)
@@ -136,7 +135,8 @@ struct TodayView: View {
         }
       }
       if let amount = progress.amount {
-        Text("오늘 \(a.metric.display(amount))\(a.metric.unit)").font(.title3.bold())
+        Text("오늘 \(a.metric.display(amount))\(a.metric.unit)").font(
+          .system(.title3, design: .rounded, weight: .semibold))
       } else {
         Text(progress.satisfied ? "최소 달성 확인 · 수치 미기록" : "작은 실천부터 시작해요").foregroundStyle(.secondary)
       }

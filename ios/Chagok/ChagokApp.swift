@@ -39,12 +39,14 @@ import SwiftUI
   }
 }
 struct RootHost: View {
+  @Environment(\.scenePhase) private var scenePhase
   @State private var store: AppStore
   init(context: ModelContext) { _store = State(initialValue: AppStore(context: context)) }
   var body: some View {
     RootView().modifier(TestAppearance()).environment(store)
+      .onChange(of: scenePhase) { _, phase in if phase == .active { store.refreshReminders() } }
       .environment(\.timeZone, TimeZone(identifier: store.state.activeZone()) ?? .current)
-      .tint(Palette.green).buttonBorderShape(.roundedRectangle(radius: 14)).alert(
+      .fontDesign(.rounded).tint(Palette.green).buttonBorderShape(.capsule).alert(
         "확인해 주세요",
         isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })
       ) {
@@ -74,11 +76,12 @@ enum Palette {
 extension View {
   func card() -> some View {
     padding(20).frame(maxWidth: .infinity, alignment: .leading)
-      .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
+      .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 28))
       .overlay {
-        RoundedRectangle(cornerRadius: 24).strokeBorder(Palette.green.opacity(0.09), lineWidth: 1)
+        RoundedRectangle(cornerRadius: 28).strokeBorder(Palette.green.opacity(0.16), lineWidth: 1.5)
       }
-      .shadow(color: .black.opacity(0.025), radius: 12, y: 4)
+      .compositingGroup()
+      .shadow(color: Palette.green.opacity(0.06), radius: 0, y: 4)
   }
 }
 struct ActivityEmblem: View {
@@ -88,7 +91,7 @@ struct ActivityEmblem: View {
     Image(systemName: icon).font(.title3.weight(.semibold))
       .foregroundStyle(Palette.activityColor(color)).frame(width: 44, height: 44)
       .background(
-        Palette.activityColor(color).opacity(0.10), in: RoundedRectangle(cornerRadius: 14)
+        Palette.activityColor(color).opacity(0.10), in: RoundedRectangle(cornerRadius: 16)
       )
       .accessibilityHidden(true)
   }
