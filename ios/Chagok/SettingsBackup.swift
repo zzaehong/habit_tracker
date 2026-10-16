@@ -152,7 +152,10 @@ struct SettingsView: View {
                 newActivity = false
                 editor = a
               } label: {
-                Label(a.name + (a.archived ? " · 보관됨" : ""), systemImage: a.icon)
+                HStack {
+                  ActivityEmblem(icon: a.icon, color: a.iconColor)
+                  Text(a.name + (a.archived ? " · 보관됨" : ""))
+                }
               }
               Spacer()
               Menu {

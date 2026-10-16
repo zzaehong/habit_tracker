@@ -49,14 +49,15 @@ struct EntryEditor: View {
           } else if activity.metric == .completion {
             Toggle("수행 완료", isOn: $entry.confirmedMinimum)
           } else {
-            TextField("\(activity.metric.title) (\(activity.metric.unit))", text: $amount)
-              .keyboardType(.decimalPad).accessibilityIdentifier("entry-amount")
+            UnitInput(
+              title: activity.metric.title, text: $amount, unit: activity.metric.unit,
+              identifier: "entry-amount")
           }
         }
         if activity.running {
           runningFields
         } else if activity.metric == .pages {
-          Section("선택 기록") { TextField("읽은 시간 (분)", text: $minutes).keyboardType(.decimalPad) }
+          Section("선택 기록") { UnitInput(title: "읽은 시간", text: $minutes, unit: "분") }
         }
         if !entry.definition.fields.filter({ !$0.hidden }).isEmpty {
           Section("추가 기록 · 선택") {
@@ -67,8 +68,9 @@ struct EntryEditor: View {
                   ForEach(f.options, id: \.self) { Text($0).tag($0) }
                 }
               } else {
-                TextField(f.name + (f.unit.isEmpty ? "" : " (\(f.unit))"), text: fieldBinding(f))
-                  .keyboardType(f.kind == .number ? .numbersAndPunctuation : .default)
+                UnitInput(
+                  title: f.name, text: fieldBinding(f), unit: f.unit,
+                  keyboard: f.kind == .number ? .numbersAndPunctuation : .default)
               }
             }
           }
@@ -135,13 +137,15 @@ struct EntryEditor: View {
         Text("시작·마지막 페이지").tag("range")
       }.pickerStyle(.segmented)
       if entry.readingMode == "direct" {
-        TextField("읽은 페이지 수", text: $amount).keyboardType(.numberPad).accessibilityIdentifier(
-          "entry-amount")
+        UnitInput(
+          title: "읽은 페이지 수", text: $amount, unit: "쪽", keyboard: .numberPad,
+          identifier: "entry-amount")
       } else {
-        TextField("시작 페이지 · 모르면 비워 두기", text: $start).keyboardType(.numberPad)
-          .accessibilityIdentifier("start-page")
-        TextField("마지막 페이지", text: $last).keyboardType(.numberPad).accessibilityIdentifier(
-          "last-page")
+        UnitInput(
+          title: "시작 페이지 · 선택", text: $start, unit: "쪽", keyboard: .numberPad,
+          identifier: "start-page")
+        UnitInput(
+          title: "마지막 페이지", text: $last, unit: "쪽", keyboard: .numberPad, identifier: "last-page")
         Text("55 − 40 = 15쪽. 다시 읽기는 시작 위치를 바꿔 새 구간으로 남겨요.").font(.caption).foregroundStyle(
           .secondary)
       }
@@ -154,10 +158,11 @@ struct EntryEditor: View {
   }
   private var runningFields: some View {
     Section("러닝 상세 · 선택") {
-      TextField("시간 (분:초 또는 시:분:초)", text: $duration).keyboardType(.numbersAndPunctuation)
-      TextField("체감 강도 (1–10)", text: $intensity).keyboardType(.decimalPad)
-      TextField("평균 심박수 (bpm)", text: $heart).keyboardType(.numberPad)
-      TextField("평균 케이던스 (steps/min)", text: $cadence).keyboardType(.numberPad)
+      UnitInput(
+        title: "분:초 또는 시:분:초", text: $duration, unit: "시간", keyboard: .numbersAndPunctuation)
+      UnitInput(title: "체감 강도 1–10", text: $intensity, unit: "점")
+      UnitInput(title: "평균 심박수", text: $heart, unit: "bpm", keyboard: .numberPad)
+      UnitInput(title: "평균 케이던스", text: $cadence, unit: "steps/min", keyboard: .numberPad)
       if let km = Double(amount), km > 0, let seconds = parseDuration(duration) {
         Text("평균 페이스 \(Duration.seconds(seconds/km).formatted(.time(pattern:.minuteSecond)))/km")
       }

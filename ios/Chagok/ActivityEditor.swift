@@ -1,12 +1,18 @@
 import ChagokCore
 import SwiftUI
+import UserNotifications
 
 struct ActivityEditor: View {
   @Environment(AppStore.self) private var store
   @Environment(\.dismiss) private var dismiss
   @State var activity: Activity
   var isNew: Bool
-  @State private var thresholds = ""
+  @State private var thresholds = ["", "", ""]
+  @State private var weeklyCount = "3"
+  @State private var interval = "2"
+  @State private var editing = false
+  @State private var deleting = false
+  private var canEdit: Bool { isNew || editing }
   @State private var rule: Rule?
   @State private var startDate = Date()
   @State private var field: CustomField?
@@ -17,14 +23,35 @@ struct ActivityEditor: View {
       Form {
         Section("1 · 내 활동") {
           TextField("활동 이름", text: $activity.name).accessibilityIdentifier("activity-name")
-          Picker("아이콘", selection: $activity.icon) {
+          Picker("아이콘 모양", selection: $activity.icon) {
             ForEach(
               [
-                "leaf", "book", "figure.run", "pencil", "dumbbell", "fork.knife", "heart",
-                "music.note",
-              ], id: \.self
-            ) { Image(systemName: $0).tag($0) }
+                "leaf", "book", "figure.run", "pencil", "dumbbell", "fork.knife",
+                "heart", "music.note", "cup.and.saucer", "drop", "moon", "sun.max",
+                "figure.walk", "bicycle", "figure.yoga", "bed.double", "pills",
+                "graduationcap", "laptopcomputer", "paintbrush", "camera", "globe",
+                "house", "sparkles", "star", "pawprint", "gamecontroller", "hands.clap",
+              ],
+              id: \.self
+            ) { icon in
+              Image(systemName: icon).tag(icon).accessibilityLabel(icon)
+            }
           }
+          Picker(
+            "아이콘 색상",
+            selection: Binding(
+              get: { activity.iconColor ?? "green" }, set: { activity.iconColor = $0 }
+            )
+          ) {
+            ForEach(Array(Palette.colorNames.enumerated()), id: \.element) { index, color in
+              Text(Palette.colorTitles[index]).tag(color)
+            }
+          }
+          HStack {
+            ActivityEmblem(icon: activity.icon, color: activity.iconColor)
+            Text(activity.name.isEmpty ? "아이콘 미리보기" : activity.name)
+          }
+
         }
         Section("2 · 무엇을 측정할까요?") {
           Picker("측정 방식", selection: $activity.metric) {
@@ -37,11 +64,17 @@ struct ActivityEditor: View {
         }
         if rule != nil {
           Section("3 · 작은 실천의 기준") {
-            TextField("체크포인트 (예: 5, 15, 30)", text: $thresholds).keyboardType(
-              .numbersAndPunctuation
-            ).accessibilityIdentifier("thresholds")
-            Text("단위: \(activity.metric.unit) · 최대 3개, 작은 값부터 쉼표로 구분").font(.caption)
-              .foregroundStyle(.secondary)
+            ForEach(0..<3, id: \.self) { index in
+              HStack {
+                Text("\(index + 1)단계")
+                UnitInput(
+                  title: index == 0 ? "최소 기준" : "선택 입력",
+                  text: $thresholds[index], unit: activity.metric.unit,
+                  identifier: "threshold-\(index + 1)")
+              }
+            }
+            Text("1단계는 필수예요. 2·3단계는 원하는 만큼, 앞 단계보다 큰 값으로 입력하세요.")
+              .font(.caption).foregroundStyle(.secondary)
           }
           Section("4 · 나에게 맞는 일정") {
             Picker("반복", selection: Binding(get: { rule!.schedule }, set: { rule!.schedule = $0 }))
@@ -65,15 +98,10 @@ struct ActivityEditor: View {
               }
             }
             if rule?.schedule == .weekly {
-              Stepper(
-                "주 \(rule!.weeklyCount)일",
-                value: Binding(get: { rule!.weeklyCount }, set: { rule!.weeklyCount = $0 }),
-                in: 1...7)
+              UnitInput(title: "주간 수행 일수", text: $weeklyCount, unit: "일/주", keyboard: .numberPad)
             }
             if rule?.schedule == .interval {
-              Stepper(
-                "\(rule!.interval)일 간격",
-                value: Binding(get: { rule!.interval }, set: { rule!.interval = $0 }), in: 1...365)
+              UnitInput(title: "반복 간격", text: $interval, unit: "일", keyboard: .numberPad)
             }
             if !isNew {
               Text("변경은 다음 날부터 적용돼요. 주간 목표를 바꾸면 다음 월요일부터 적용돼요.").font(.caption).foregroundStyle(
@@ -95,51 +123,99 @@ struct ActivityEditor: View {
           }
           .onMove { activity.fields.move(fromOffsets: $0, toOffset: $1) }
           Button("추가 항목 만들기") { field = CustomField(name: "", kind: .text) }
-          Text("항목 순서는 편집 버튼으로 바꿀 수 있어요.").font(.caption).foregroundStyle(.secondary)
+          Text("편집 중 항목을 끌어서 순서를 바꿀 수 있어요.").font(.caption).foregroundStyle(.secondary)
         }
-        if let failure { Text(failure).foregroundStyle(.red) }
-      }.navigationTitle(isNew ? "활동 만들기" : "활동 설정").toolbar {
-        ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
-        ToolbarItem(placement: .topBarTrailing) { EditButton() }
-        ToolbarItem(placement: .confirmationAction) {
-          Button("저장", action: save).accessibilityIdentifier("activity-save")
-        }
-      }.onAppear {
-        if rule == nil {
-          rule = activity.rules.last
-          startDate = Day.date(rule!.start) ?? .now
-          thresholds =
-            activity.metric == .time
-            ? rule!.thresholds.map { String($0 / 60) }.joined(separator: ", ")
-            : rule!.thresholds.map { String(format: "%g", $0) }.joined(separator: ", ")
-        }
-      }
-      .onChange(of: activity.metric) { _, metric in
-        thresholds = metric.defaults.map { String(format: "%g", metric == .time ? $0 / 60 : $0) }
-          .joined(separator: ", ")
-        activity.running = false
-      }
-      .sheet(item: $field) { f in
-        FieldEditor(
-          field: f, locked: hasEntries && activity.fields.contains(where: { $0.id == f.id })
-        ) { saved in
-          if let i = activity.fields.firstIndex(where: { $0.id == saved.id }) {
-            activity.fields[i] = saved
-          } else {
-            activity.fields.append(saved)
+        if !isNew {
+          Section {
+            Button("활동 삭제", role: .destructive) { deleting = true }
           }
         }
-      }
+        if let failure { Text(failure).foregroundStyle(.red) }
+      }.disabled(!canEdit).environment(\.editMode, .constant(canEdit ? .active : .inactive))
+        .navigationTitle(isNew ? "활동 만들기" : "활동 설정").toolbar {
+          ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+          ToolbarItem(placement: .topBarTrailing) {
+            if !canEdit { Button("편집") { editing = true } }
+          }
+          ToolbarItem(placement: .confirmationAction) {
+            if canEdit { Button("저장", action: save).accessibilityIdentifier("activity-save") }
+          }
+        }.onAppear {
+          if rule == nil {
+            rule = activity.rules.last
+            startDate = Day.date(rule!.start) ?? .now
+            fillThresholds(rule!.thresholds)
+            weeklyCount = String(rule!.weeklyCount)
+            interval = String(rule!.interval)
+          }
+        }
+        .onChange(of: activity.metric) { _, metric in
+          fillThresholds(metric.defaults)
+          activity.running = false
+        }
+        .alert("활동과 기록을 삭제할까요?", isPresented: $deleting) {
+          Button("취소", role: .cancel) {}
+          Button("삭제", role: .destructive) {
+            if store.update({ state in
+              state.entries.removeAll { $0.activityID == activity.id }
+              state.activities.removeAll { $0.id == activity.id }
+              if state.timer?.activityID == activity.id { state.timer = nil }
+            }) {
+              let id = activity.id
+              Task {
+                let center = UNUserNotificationCenter.current()
+                let pending = await center.pendingNotificationRequests()
+                center.removePendingNotificationRequests(
+                  withIdentifiers:
+                    pending.filter { $0.identifier.hasPrefix(id + "|") }.map(\.identifier))
+              }
+              dismiss()
+            }
+          }
+        } message: {
+          Text("이 활동의 기록과 XP도 삭제되며 되돌릴 수 없어요. 책과 첨부 원본은 보존합니다. 기록을 남기려면 활동 보관을 사용하세요.")
+        }
+        .sheet(item: $field) { f in
+          FieldEditor(
+            field: f, locked: hasEntries && activity.fields.contains(where: { $0.id == f.id })
+          ) { saved in
+            if let i = activity.fields.firstIndex(where: { $0.id == saved.id }) {
+              activity.fields[i] = saved
+            } else {
+              activity.fields.append(saved)
+            }
+          }
+        }
+    }
+  }
+  private func fillThresholds(_ values: [Double]) {
+    thresholds = (0..<3).map { index in
+      guard index < values.count else { return "" }
+      return String(format: "%g", activity.metric == .time ? values[index] / 60 : values[index])
     }
   }
   private func save() {
     do {
       guard var next = rule else { return }
-      let parts = thresholds.split(separator: ",", omittingEmptySubsequences: false).map {
-        Double($0.trimmingCharacters(in: .whitespaces))
+      let inputs = thresholds.map { $0.trimmingCharacters(in: .whitespaces) }
+      guard !inputs[0].isEmpty, !(inputs[1].isEmpty && !inputs[2].isEmpty) else {
+        throw AppError.invalid("1단계부터 순서대로 입력하세요.")
       }
+      let parts = inputs.filter { !$0.isEmpty }.map { Double($0) }
       guard !parts.contains(where: { $0 == nil }) else { throw AppError.invalid("기준을 숫자로 입력하세요.") }
       next.thresholds = parts.compactMap { $0 }.map { activity.metric == .time ? $0 * 60 : $0 }
+      if next.schedule == .weekly {
+        guard let count = Int(weeklyCount), (1...7).contains(count) else {
+          throw AppError.invalid("주간 일수는 1~7일로 입력하세요.")
+        }
+        next.weeklyCount = count
+      }
+      if next.schedule == .interval {
+        guard let days = Int(interval), (1...365).contains(days) else {
+          throw AppError.invalid("반복 간격은 1~365일로 입력하세요.")
+        }
+        next.interval = days
+      }
       next.start = Day.string(startDate, zone: "UTC")
       let today = store.state.today()
       if isNew {

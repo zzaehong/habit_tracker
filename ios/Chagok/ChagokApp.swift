@@ -55,6 +55,18 @@ struct RootHost: View {
   }
 }
 enum Palette {
+  static let colorNames = ["green", "blue", "purple", "orange", "pink", "red"]
+  static let colorTitles = ["초록", "파랑", "보라", "주황", "분홍", "빨강"]
+  static func activityColor(_ name: String?) -> Color {
+    switch name {
+    case "blue": return .blue
+    case "purple": return .purple
+    case "orange": return .orange
+    case "pink": return .pink
+    case "red": return .red
+    default: return green
+    }
+  }
   static let green = Color("AccentColor")
   static let gold = Color("RewardColor")
   static let background = Color("BackgroundColor")
@@ -71,10 +83,13 @@ extension View {
 }
 struct ActivityEmblem: View {
   let icon: String
+  var color: String? = nil
   var body: some View {
     Image(systemName: icon).font(.title3.weight(.semibold))
-      .foregroundStyle(Palette.green).frame(width: 44, height: 44)
-      .background(Palette.green.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+      .foregroundStyle(Palette.activityColor(color)).frame(width: 44, height: 44)
+      .background(
+        Palette.activityColor(color).opacity(0.10), in: RoundedRectangle(cornerRadius: 14)
+      )
       .accessibilityHidden(true)
   }
 }
@@ -168,5 +183,21 @@ private struct TestAppearance: ViewModifier {
     #else
       content
     #endif
+  }
+}
+
+struct UnitInput: View {
+  let title: String
+  @Binding var text: String
+  let unit: String
+  var keyboard: UIKeyboardType = .decimalPad
+  var identifier = ""
+  var body: some View {
+    HStack {
+      TextField(title, text: $text).keyboardType(keyboard).textFieldStyle(.roundedBorder)
+        .accessibilityLabel(title + (unit.isEmpty ? "" : ", " + unit))
+        .accessibilityIdentifier(identifier)
+      if !unit.isEmpty { Text(unit).foregroundStyle(.secondary).fixedSize() }
+    }
   }
 }

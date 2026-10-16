@@ -111,3 +111,11 @@
 - PASS: 성장 및 큰 글자 다크 온보딩 캡처를 직접 확인 (runtime/design-images).
 - FAIL: 없음.
 - NOT RUN: 실제 iPhone, VoiceOver 음성 탐색, iOS 18 기기 확인.
+
+## 2026-10-17 활동 설정 개선
+- 시작 develop b18697851d4dd7da7fdf53a680721d634e4b5974, feature/activity-settings.
+- 읽기 전용/편집 전환, 삭제 확인과 기록·XP 정정, 단계별 입력, 단위 오른쪽 표시, 아이콘 모양·색상 저장을 구현.
+- PASS: 핵심 테스트 19개 (runtime/settings-core-final.log). 색상 없는 기존 JSON과 새 색상 왕복 검증 포함.
+- PASS: 기존 UI 5개 (runtime/settings-ui.xcresult), 신규 편집 잠금·삭제 취소·삭제 확정·XP 정정 UI 테스트 (runtime/settings-edit.xcresult).
+- FAIL: 없음.
+- NOT RUN: 실제 iPhone, VoiceOver 음성, 알림 실제 전달/취소 확인.

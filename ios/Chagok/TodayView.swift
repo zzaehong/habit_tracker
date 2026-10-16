@@ -127,7 +127,7 @@ struct TodayView: View {
     let rule = a.rule(on: day)
     return VStack(alignment: .leading, spacing: 14) {
       HStack {
-        ActivityEmblem(icon: a.icon)
+        ActivityEmblem(icon: a.icon, color: a.iconColor)
         Text(a.name).font(.title3.bold())
         Spacer()
         if progress.satisfied {

@@ -99,6 +99,7 @@ public struct Activity: Codable, Equatable, Identifiable, Sendable {
   public var id = UUID().uuidString
   public var name: String
   public var icon = "leaf"
+  public var iconColor: String?
   public var metric: Metric
   public var fields: [CustomField] = []
   public var rules: [Rule]
