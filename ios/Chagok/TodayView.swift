@@ -23,7 +23,7 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 18) {
           DatePicker("활동 날짜", selection: $date, in: ...Date(), displayedComponents: .date)
             .datePickerStyle(.compact)
-          Text("오늘의 작은 실천").font(.title2.bold())
+          Text("오늘의 작은 실천").font(.system(.largeTitle, design: .rounded, weight: .bold))
           Text("완벽하지 않아도 괜찮아요. 한 번의 실천부터.").foregroundStyle(.secondary)
           if store.state.showRewards {
             let earned = store.state.activities.reduce(0) {
@@ -42,12 +42,18 @@ struct TodayView: View {
                   Text("\(day == store.state.today() ? "오늘" : "선택한 날") \(earned) XP")
                   Text("레벨 \(level.level)")
                 }
-              }.font(.headline).foregroundStyle(Palette.gold)
+              }.font(.system(.title3, design: .rounded, weight: .bold)).foregroundStyle(
+                Palette.green)
               ProgressView(value: Double(level.earned), total: Double(level.required))
                 .tint(Palette.gold).accessibilityLabel("레벨 진행")
               Text("다음 레벨까지 \(level.required - level.earned) XP")
                 .font(.caption).foregroundStyle(.secondary)
-            }.card()
+            }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+              .background(
+                LinearGradient(
+                  colors: [Palette.green.opacity(0.12), Palette.gold.opacity(0.08)],
+                  startPoint: .topLeading, endPoint: .bottomTrailing),
+                in: RoundedRectangle(cornerRadius: 24))
           }
           if store.state.timer != nil { TimerCard() }
           if active.isEmpty {
@@ -121,7 +127,8 @@ struct TodayView: View {
     let rule = a.rule(on: day)
     return VStack(alignment: .leading, spacing: 14) {
       HStack {
-        Label(a.name, systemImage: a.icon).font(.headline)
+        ActivityEmblem(icon: a.icon)
+        Text(a.name).font(.title3.bold())
         Spacer()
         if progress.satisfied {
           Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green)
@@ -132,6 +139,15 @@ struct TodayView: View {
         Text("오늘 \(a.metric.display(amount))\(a.metric.unit)").font(.title3.bold())
       } else {
         Text(progress.satisfied ? "최소 달성 확인 · 수치 미기록" : "작은 실천부터 시작해요").foregroundStyle(.secondary)
+      }
+      if let thresholds = rule?.thresholds, !thresholds.isEmpty {
+        HStack(spacing: 6) {
+          ForEach(Array(thresholds.enumerated()), id: \.offset) { index, _ in
+            Capsule().fill(index < progress.stages ? Palette.green : Palette.green.opacity(0.12))
+              .frame(height: 6)
+          }
+        }.accessibilityElement(children: .ignore)
+          .accessibilityLabel("체크포인트 \(progress.stages)/\(thresholds.count)단계 달성")
       }
       if let next = rule?.thresholds.dropFirst(progress.stages).first {
         Text("다음 체크포인트 \(a.metric.display(next))\(a.metric.unit)").font(.subheadline)

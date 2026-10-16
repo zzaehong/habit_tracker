@@ -44,7 +44,7 @@ struct RootHost: View {
   var body: some View {
     RootView().modifier(TestAppearance()).environment(store)
       .environment(\.timeZone, TimeZone(identifier: store.state.activeZone()) ?? .current)
-      .tint(Palette.green).alert(
+      .tint(Palette.green).buttonBorderShape(.roundedRectangle(radius: 14)).alert(
         "확인해 주세요",
         isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })
       ) {
@@ -61,10 +61,24 @@ enum Palette {
 }
 extension View {
   func card() -> some View {
-    padding().frame(maxWidth: .infinity, alignment: .leading).background(
-      Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+    padding(20).frame(maxWidth: .infinity, alignment: .leading)
+      .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24))
+      .overlay {
+        RoundedRectangle(cornerRadius: 24).strokeBorder(Palette.green.opacity(0.09), lineWidth: 1)
+      }
+      .shadow(color: .black.opacity(0.025), radius: 12, y: 4)
   }
 }
+struct ActivityEmblem: View {
+  let icon: String
+  var body: some View {
+    Image(systemName: icon).font(.title3.weight(.semibold))
+      .foregroundStyle(Palette.green).frame(width: 44, height: 44)
+      .background(Palette.green.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+      .accessibilityHidden(true)
+  }
+}
+
 struct RootView: View {
   @Environment(AppStore.self) private var store
   var body: some View {
@@ -92,6 +106,9 @@ struct OnboardingView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 24) {
           Image(systemName: "leaf.fill").font(.system(size: 46)).foregroundStyle(Palette.green)
+            .padding(24).background(
+              Palette.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 30)
+            )
             .accessibilityHidden(true)
           Text("작은 실천을,\n차곡차곡.").font(.largeTitle.bold())
           Text("내 방식으로 활동을 만들고\n쌓여 가는 변화를 만나세요.").font(.title3).foregroundStyle(.secondary)
@@ -128,7 +145,7 @@ struct OnboardingView: View {
       editor = a
     } label: {
       HStack {
-        Image(systemName: icon).font(.title2)
+        ActivityEmblem(icon: icon)
         VStack(alignment: .leading) {
           Text(title).font(.headline)
           Text(subtitle).font(.subheadline).foregroundStyle(.secondary)
