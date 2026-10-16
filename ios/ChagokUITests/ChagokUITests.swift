@@ -17,7 +17,10 @@ final class ChagokUITests: XCTestCase {
     amount.typeText("15")
     app.buttons["entry-save"].tap()
     XCTAssertTrue(app.staticTexts["오늘 15쪽"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["오늘 15 XP"].exists)
     app.tabBars.buttons["성장"].tap()
+    XCTAssertTrue(app.staticTexts["측정 가능한 성장"].exists)
+    app.swipeUp()
     XCTAssertTrue(app.staticTexts["15쪽 쌓았어요"].waitForExistence(timeout: 5))
     let attachment = XCTAttachment(screenshot: app.screenshot())
     attachment.name = "성장 화면"
@@ -54,7 +57,9 @@ final class ChagokUITests: XCTestCase {
     app.buttons["onboarding-finish"].tap()
     app.buttons["최소 1회 달성"].tap()
     XCTAssertTrue(app.staticTexts["최소 달성 확인 · 수치 미기록"].waitForExistence(timeout: 5))
+    XCTAssertTrue(app.staticTexts["오늘 10 XP"].exists)
     app.buttons["실행 취소"].tap()
+    XCTAssertTrue(app.staticTexts["오늘 0 XP"].exists)
     XCTAssertTrue(app.buttons["최소 1회 달성"].exists)
   }
   @MainActor func testReadingRangeRefinesQuickEntry() {
