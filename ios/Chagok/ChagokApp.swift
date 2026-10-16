@@ -42,14 +42,16 @@ struct RootHost: View {
   @State private var store: AppStore
   init(context: ModelContext) { _store = State(initialValue: AppStore(context: context)) }
   var body: some View {
-    RootView().modifier(TestAppearance()).environment(store).tint(Palette.green).alert(
-      "확인해 주세요",
-      isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })
-    ) {
-      Button("확인") { store.error = nil }
-    } message: {
-      Text(store.error ?? "")
-    }
+    RootView().modifier(TestAppearance()).environment(store)
+      .environment(\.timeZone, TimeZone(identifier: store.state.activeZone()) ?? .current)
+      .tint(Palette.green).alert(
+        "확인해 주세요",
+        isPresented: Binding(get: { store.error != nil }, set: { if !$0 { store.error = nil } })
+      ) {
+        Button("확인") { store.error = nil }
+      } message: {
+        Text(store.error ?? "")
+      }
   }
 }
 enum Palette {

@@ -158,4 +158,20 @@ final class ProgressTests: XCTestCase {
     XCTAssertEqual(s.activeZone(now: parser.date(from: "2026-10-04T05:00:00Z")!), "Asia/Tokyo")
   }
 
+  func testOpenPeriodsCountSuccessWithoutPrematureFailure() {
+    var a = Activity(name: "실천", metric: .completion, date: "2026-10-05")
+    var e = Entry(activity: a, date: "2026-10-05", timezone: "UTC")
+    e.confirmedMinimum = true
+    let current = Progress.practice(a, entries: [e], from: e.date, through: e.date, today: e.date)
+    XCTAssertEqual(current.expected, 1)
+    XCTAssertEqual(current.achieved, 1)
+    XCTAssertEqual(
+      Progress.practice(a, entries: [], from: e.date, through: e.date, today: e.date).expected, 0)
+    a.rules[0].schedule = .weekly
+    a.rules[0].weeklyCount = 1
+    let week = Progress.practice(a, entries: [e], from: e.date, through: e.date, today: e.date)
+    XCTAssertEqual(week.currentStreak, 1)
+    XCTAssertEqual(week.rate, 1)
+  }
+
 }

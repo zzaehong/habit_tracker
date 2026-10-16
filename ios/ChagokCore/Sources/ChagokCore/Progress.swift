@@ -112,10 +112,13 @@ public enum Progress {
         let week = Day.week(day)
         guard seenWeeks.insert(week).inserted else { continue }
         let end = Day.add(week, 6)
-        guard end < today && end <= through else { continue }
         // Partial first weeks are shown as progress, not failed weekly obligations.
         guard rule.start <= week, rule.effective <= week, from <= week else { continue }
-        let successes = Day.range(week, end).filter { daily(activity, $0, entries).satisfied }.count
+        let successes = Day.range(week, min(end, min(through, today))).filter {
+          daily(activity, $0, entries).satisfied
+        }.count
+        let closed = end < today && end <= through
+        guard closed || successes >= rule.weeklyCount else { continue }
         result.expected += rule.weeklyCount
         result.achieved += min(successes, rule.weeklyCount)
         streak = successes >= rule.weeklyCount ? streak + 1 : 0
@@ -123,7 +126,11 @@ public enum Progress {
         guard due(activity, day) else { continue }
         let success = daily(activity, day, entries).satisfied
         if day == today {
-          if success && rule.schedule != .once { streak += 1 }
+          if success {
+            result.expected += 1
+            result.achieved += 1
+            if rule.schedule != .once { streak += 1 }
+          }
           continue
         }
         result.expected += 1
