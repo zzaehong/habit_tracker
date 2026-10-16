@@ -70,3 +70,16 @@
 
 ## iOS backup migration
 - Swift 10 tests PASS: JSON/ZIP 왕복, 해시/CRC/경로 검증, ID 충돌 선택, 기존 원문 보존, 미상 페이지, 소급 XP 꺼짐, NRC 단위·충돌.
+- ios-backup-migration develop 회귀: Swift 10 tests, 웹 31 tests/typecheck/build, 웹 E2E 5/5 PASS.
+
+## iOS app
+- 첫 generic simulator 앱 빌드 PASS. Swift 11 tests PASS (기존 deflate ZIP 및 빈 파일 호환성 추가).
+- UI 테스트 최초 빌드 FAIL: 프로젝트 Debug의 ONLY_ACTIVE_ARCH 기본값 누락으로 앱 x86_64와 패키지 arm64 링크 불일치. Debug 활성 아키텍처 빌드로 수정.
+- iOS UI 3/3 PASS: 독서 온보딩/기록/성장, 커스텀 최소 달성/취소, SwiftData 저장 후 앱 종료·재실행 복원. 성장 화면 스크린샷 검토 PASS.
+- 추가 UI 테스트 컴파일 FAIL: XCUIElement에 count 접근. 쿼리 matching(identifier:).count로 수정.
+- 실기기 아키텍처 iOS Release 무서명 빌드 PASS (실기기 실행은 아님).
+- Swift 16 tests PASS: 사용자 항목 단위/누락, 간격/단발/일시정지 이력, 보상 상한, 타이머/시간대 백업, 식사·웨이트·과외·원문·이미지의 v1→v2 왕복 추가.
+- UI 4차 영속 테스트 FAIL: 프로젝트 Debug에 DEBUG 컴파일 조건이 없어 테스트 전용 저장소 분기가 비활성화되고 이전 시뮬레이터 기본 저장소를 읽음. DEBUG 조건을 추가해 테스트 저장소를 격리. 큰 글자·다크 테스트도 앱 내부 Debug 전용 환경 주입으로 명확히 적용하도록 보완.
+- UI 5차 5/5 PASS: 커스텀 완료/취소, Debug 주입 큰 글자·다크 온보딩, 독립 SwiftData 저장소 앱 재실행, 독서/성장, 빠른 완료→40~55쪽 보완 후 단일 기록 확인.
+- Swift 17 tests PASS: 연속 시간대 변경이 현재 적용 중 시간대의 자정부터 적용되는지 추가 검증.
+- 실제 iPhone, iOS 18 런타임, VoiceOver 음성 탐색, 실제 NRC 캡처 정확도, 실기기 알림 전달, 서명/TestFlight 배포는 NOT RUN (실기기·원본 캡처·서명 계정 미제공). iOS 27 시뮬레이터 및 iPhone arm64 Release 컴파일 결과와 구분.
