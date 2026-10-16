@@ -25,6 +25,30 @@ struct TodayView: View {
             .datePickerStyle(.compact)
           Text("오늘의 작은 실천").font(.title2.bold())
           Text("완벽하지 않아도 괜찮아요. 한 번의 실천부터.").foregroundStyle(.secondary)
+          if store.state.showRewards {
+            let earned = store.state.activities.reduce(0) {
+              $0 + Progress.daily($1, day, store.state.entries, rewardOnly: true).xp
+            }
+            let level = Progress.level(Progress.totalXP(store.state))
+            VStack(alignment: .leading, spacing: 8) {
+              ViewThatFits(in: .horizontal) {
+                HStack {
+                  Text("\(day == store.state.today() ? "오늘" : "선택한 날") \(earned) XP")
+                    .accessibilityIdentifier("daily-xp")
+                  Spacer()
+                  Text("레벨 \(level.level)")
+                }
+                VStack(alignment: .leading) {
+                  Text("\(day == store.state.today() ? "오늘" : "선택한 날") \(earned) XP")
+                  Text("레벨 \(level.level)")
+                }
+              }.font(.headline).foregroundStyle(Palette.gold)
+              ProgressView(value: Double(level.earned), total: Double(level.required))
+                .tint(Palette.gold).accessibilityLabel("레벨 진행")
+              Text("다음 레벨까지 \(level.required - level.earned) XP")
+                .font(.caption).foregroundStyle(.secondary)
+            }.card()
+          }
           if store.state.timer != nil { TimerCard() }
           if active.isEmpty {
             ContentUnavailableView(
