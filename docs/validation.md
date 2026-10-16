@@ -83,3 +83,11 @@
 - UI 5차 5/5 PASS: 커스텀 완료/취소, Debug 주입 큰 글자·다크 온보딩, 독립 SwiftData 저장소 앱 재실행, 독서/성장, 빠른 완료→40~55쪽 보완 후 단일 기록 확인.
 - Swift 17 tests PASS: 연속 시간대 변경이 현재 적용 중 시간대의 자정부터 적용되는지 추가 검증.
 - 실제 iPhone, iOS 18 런타임, VoiceOver 음성 탐색, 실제 NRC 캡처 정확도, 실기기 알림 전달, 서명/TestFlight 배포는 NOT RUN (실기기·원본 캡처·서명 계정 미제공). iOS 27 시뮬레이터 및 iPhone arm64 Release 컴파일 결과와 구분.
+- ios-app develop 병합 04ddb93 후 전체 회귀 PASS: Swift 17 tests, 웹 31 tests/typecheck/build, 웹 E2E 5/5, iPhone UI 5/5.
+
+## iOS finalize — 웹 제거
+- 네이티브 앱·기존 백업 이미지 왕복 검증 후 React/Vite/Fastify 소스·웹 테스트·Node 의존성·Service Worker·맥 운영 스크립트 제거. 기존 운영 문서는 docs/history/web-operations.md로 이동하여 보존.
+- runtime DB·이미지·백업·기존 evidence는 삭제하지 않음. 이전 8787 웹 미리보기 서버는 작업 경로와 명령을 확인한 후 SIGTERM 정상 종료.
+- 오늘/이번 주가 끝나기 전에 달성한 경우 성공을 즉시 집계하고, 미달성만 미확정으로 유지하도록 보완. 화면 날짜 선택기도 고정 시간대를 사용.
+- 웹 제거 후 feature 검증: Swift 18 tests PASS, 네이티브 앱 빌드 및 UI 5/5 PASS. Node 의존성 없이 테스트 실행 확인.
+- 재생성 가능한 node_modules/dist는 제거. 마지막 웹 Playwright 보고서는 runtime/evidence/legacy-web-final에 이동하여 보존.
