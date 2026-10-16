@@ -128,9 +128,9 @@ struct ImportReview: View {
   }
 }
 struct SettingsView: View {
+  @AppStorage("notificationsEnabled") private var notificationsEnabled = true
   @Environment(AppStore.self) private var store
   @State private var editor: Activity?
-  @State private var newActivity = false
   @State private var exportURL: URL?
   @State private var exporting = false
   @State private var zone = ""
@@ -138,9 +138,6 @@ struct SettingsView: View {
   @State private var retroFrom = Date()
   @State private var retroThrough = Date()
   @State private var retroConfirm = false
-  @State private var reminder = Date()
-  @State private var notificationActivity = ""
-  @State private var notificationMessage = ""
   @State private var archiveTarget: Activity?
   var body: some View {
     NavigationStack {
@@ -149,7 +146,6 @@ struct SettingsView: View {
           ForEach(store.state.activities) { a in
             HStack {
               Button {
-                newActivity = false
                 editor = a
               } label: {
                 HStack {
@@ -170,7 +166,6 @@ struct SettingsView: View {
                   r.enabled = true
                   r.id = UUID().uuidString
                   copy.rules = [r]
-                  newActivity = true
                   editor = copy
                 }
                 Button(a.archived ? "다시 활성화" : "활동 보관") { archiveTarget = a }
@@ -180,7 +175,6 @@ struct SettingsView: View {
             }
           }
           Button("활동 만들기") {
-            newActivity = true
             editor = Activity(name: "", metric: .completion, date: store.state.today())
           }
         }
@@ -230,28 +224,11 @@ struct SettingsView: View {
           Text("현재 \(store.state.activeZone())\n여행 중에도 자동으로 바뀌지 않아요.").font(.caption)
             .foregroundStyle(.secondary)
         }
-        Section("활동 알림 · 선택") {
-          Picker("활동", selection: $notificationActivity) {
-            Text("선택").tag("")
-            ForEach(store.state.activities.filter { !$0.archived }) { Text($0.name).tag($0.id) }
-          }
-          DatePicker("알림 시각", selection: $reminder, displayedComponents: .hourAndMinute)
-          Button("예정일 알림 설정") { Task { await scheduleReminder() } }.disabled(
-            notificationActivity.isEmpty)
-          Button("이 활동 알림 해제") {
-            Task {
-              let center = UNUserNotificationCenter.current()
-              let pending = await center.pendingNotificationRequests()
-              center.removePendingNotificationRequests(
-                withIdentifiers: pending.filter {
-                  $0.identifier.hasPrefix(notificationActivity + "|")
-                }.map(\.identifier))
-              notificationMessage = "해제했어요."
-            }
-          }.disabled(notificationActivity.isEmpty)
-          Text("주 N회는 매주 월요일에 한 번 안내해요. 알림은 향후 28일을 예약하므로 앱에서 다시 설정해 주세요.").font(.caption)
-            .foregroundStyle(.secondary)
-          if !notificationMessage.isEmpty { Text(notificationMessage).font(.caption) }
+        Section("알림") {
+          Toggle("전체 활동 알림", isOn: $notificationsEnabled)
+            .onChange(of: notificationsEnabled) { _, _ in store.refreshReminders() }
+          Text("활동별 알림 시각은 활동 편집 화면에서 설정해요. iPhone의 알림 권한도 허용되어 있어야 합니다.")
+            .font(.caption).foregroundStyle(.secondary)
         }
         if store.state.entries.contains(where: { !$0.rewardEligible }) {
           Section("이전 기록 XP · 선택") {
@@ -269,8 +246,10 @@ struct SettingsView: View {
           Text("차곡 2.0 · 오프라인 전용").foregroundStyle(.secondary)
           Text("페이지·거리·시간·횟수·완료를 내 방식으로 기록하세요.").font(.footnote)
         }
-      }.navigationTitle("설정").sheet(item: $editor) {
-        ActivityEditor(activity: $0, isNew: newActivity)
+      }.navigationTitle("설정").sheet(item: $editor) { selected in
+        ActivityEditor(
+          activity: selected,
+          isNew: !store.state.activities.contains(where: { $0.id == selected.id }))
       }.onAppear { zone = store.state.activeZone() }
         .alert("이전 기록 XP를 적용할까요?", isPresented: $retroConfirm) {
           Button("취소", role: .cancel) {}
@@ -326,52 +305,6 @@ struct SettingsView: View {
     exporting = true
     defer { exporting = false }
     do { exportURL = try store.export(zip: zip) } catch { store.error = error.localizedDescription }
-  }
-  private func scheduleReminder() async {
-    do {
-      let center = UNUserNotificationCenter.current()
-      guard try await center.requestAuthorization(options: [.alert, .sound]) else {
-        notificationMessage = "알림이 꺼져 있어요. iPhone 설정에서 허용할 수 있어요."
-        return
-      }
-      guard let a = store.state.activities.first(where: { $0.id == notificationActivity }) else {
-        return
-      }
-      let pending = await center.pendingNotificationRequests()
-      let other = pending.filter { !$0.identifier.hasPrefix(a.id + "|") }
-      let remaining = max(0, 60 - other.count)
-      center.removePendingNotificationRequests(
-        withIdentifiers: pending.filter { $0.identifier.hasPrefix(a.id + "|") }.map(\.identifier))
-      var count = 0
-      for day in Day.range(store.state.today(), Day.add(store.state.today(), 27))
-      where Progress.due(a, day) {
-        if a.rule(on: day)?.schedule == .weekly && Day.weekday(day) != 2 { continue }
-        if count >= remaining { break }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: store.state.activeZone())!
-        let hm = Calendar.current.dateComponents([.hour, .minute], from: reminder)
-        let dateParts = day.split(separator: "-").compactMap { Int($0) }
-        var parts = DateComponents()
-        parts.calendar = calendar
-        parts.timeZone = calendar.timeZone
-        parts.year = dateParts[0]
-        parts.month = dateParts[1]
-        parts.day = dateParts[2]
-        parts.hour = hm.hour
-        parts.minute = hm.minute
-        guard let date = calendar.date(from: parts), date > .now else { continue }
-        let content = UNMutableNotificationContent()
-        content.title = "작은 실천을 차곡"
-        content.body = "\(a.name), 내 속도로 시작해 볼까요?"
-        content.sound = .default
-        try await center.add(
-          UNNotificationRequest(
-            identifier: a.id + "|" + day, content: content,
-            trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
-        count += 1
-      }
-      notificationMessage = "\(count)개의 예정 알림을 설정했어요."
-    } catch { notificationMessage = "알림 설정 실패: \(error.localizedDescription)" }
   }
   private func legacyTitle(_ raw: String) -> String {
     guard let d = raw.data(using: .utf8),

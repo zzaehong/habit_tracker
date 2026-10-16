@@ -2,6 +2,7 @@ import ChagokCore
 import Foundation
 import Observation
 import SwiftData
+import UserNotifications
 
 @Model final class StoredSnapshot {
   @Attribute(.unique) var key: String
@@ -21,6 +22,8 @@ import SwiftData
   private let folder: URL
   private var row: StoredSnapshot?
   private(set) var loaded = false
+  private var remindersReady = false
+  private var reminderTask: Task<Void, Never>?
   init(context: ModelContext) {
     self.context = context
     context.autosaveEnabled = false
@@ -36,6 +39,11 @@ import SwiftData
         try state.validate()
       }
       loaded = true
+      Task {
+        await migrateReminders()
+        remindersReady = true
+        refreshReminders()
+      }
     } catch {
       self.error = "기록을 열지 못했습니다. 데이터를 삭제하지 말고 앱을 다시 열어 주세요. \(error.localizedDescription)"
     }
@@ -59,10 +67,61 @@ import SwiftData
       }
       row = record
       state = next
+      refreshReminders()
       return true
     } catch {
       self.error = "저장하지 못했습니다: \(error.localizedDescription)"
       return false
+    }
+  }
+  private func migrateReminders() async {
+    let center = UNUserNotificationCenter.current()
+    let requests = await center.pendingNotificationRequests()
+    guard !UserDefaults.standard.bool(forKey: "activityRemindersMigrated") else { return }
+    let migrated = update { snapshot in
+      for index in snapshot.activities.indices
+      where snapshot.activities[index].reminderMinute == nil {
+        let id = snapshot.activities[index].id
+        if let request = requests.first(where: { $0.identifier.hasPrefix(id + "|") }),
+          let trigger = request.trigger as? UNCalendarNotificationTrigger,
+          let hour = trigger.dateComponents.hour, let minute = trigger.dateComponents.minute
+        {
+          snapshot.activities[index].reminderMinute = hour * 60 + minute
+        }
+      }
+    }
+    if migrated { UserDefaults.standard.set(true, forKey: "activityRemindersMigrated") }
+  }
+  func refreshReminders() {
+    guard remindersReady else { return }
+    // Serialize replacements so a slow earlier update cannot restore stale reminders.
+    let previous = reminderTask
+    let snapshot = state
+    let enabled = UserDefaults.standard.object(forKey: "notificationsEnabled") as? Bool ?? true
+    reminderTask = Task {
+      await previous?.value
+      let center = UNUserNotificationCenter.current()
+      center.removeAllPendingNotificationRequests()
+      guard enabled else { return }
+      let status = await center.notificationSettings().authorizationStatus
+      guard status == .authorized || status == .provisional else { return }
+      do {
+        for plan in Progress.reminders(snapshot, now: .now) {
+          let content = UNMutableNotificationContent()
+          content.title = "작은 실천을 차곡"
+          content.body = "\(plan.name), 내 속도로 시작해 볼까요?"
+          content.sound = .default
+          var calendar = Calendar(identifier: .gregorian)
+          calendar.timeZone = TimeZone(identifier: snapshot.activeZone()) ?? .current
+          var parts = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute], from: plan.date)
+          parts.timeZone = calendar.timeZone
+          try await center.add(
+            UNNotificationRequest(
+              identifier: plan.id, content: content,
+              trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
+        }
+      } catch { self.error = "알림 예약 실패: \(error.localizedDescription)" }
     }
   }
   func save(_ entry: Entry, book: Book? = nil) -> Bool {

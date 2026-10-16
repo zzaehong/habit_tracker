@@ -100,6 +100,7 @@ public struct Activity: Codable, Equatable, Identifiable, Sendable {
   public var name: String
   public var icon = "leaf"
   public var iconColor: String?
+  public var reminderMinute: Int?
   public var metric: Metric
   public var fields: [CustomField] = []
   public var rules: [Rule]
@@ -117,6 +118,9 @@ public struct Activity: Codable, Equatable, Identifiable, Sendable {
     guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !rules.isEmpty,
       Set(rules.map(\.effective)).count == rules.count, Set(fields.map(\.id)).count == fields.count
     else { throw AppError.invalid("활동 이름과 정의를 확인하세요.") }
+    if let reminderMinute, !(0..<1440).contains(reminderMinute) {
+      throw AppError.invalid("알림 시각을 확인하세요.")
+    }
     for rule in rules { try rule.validate(metric: metric) }
     for f in fields {
       guard !f.name.isEmpty,

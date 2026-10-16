@@ -21,6 +21,7 @@ struct EntryEditor: View {
   @State private var date: Date
   @State private var failure: String?
   @State private var confirming = false
+  @State private var deleting = false
   @State private var pending: Entry?
   @State private var photos: [PhotosPickerItem] = []
   @State private var analyzing = false
@@ -86,6 +87,11 @@ struct EntryEditor: View {
             Text(legacyDescription(raw)).font(.footnote).textSelection(.enabled)
           }
         }
+        if original != nil {
+          Section {
+            Button("기록 삭제", role: .destructive) { deleting = true }
+          }
+        }
         if let failure {
           Text(failure).foregroundStyle(.red).accessibilityIdentifier("entry-error")
         }
@@ -105,6 +111,14 @@ struct EntryEditor: View {
           }
         } message: {
           Text("최소 기준보다 작은 수치예요. XP와 실행률도 다시 계산됩니다.")
+        }
+        .alert("기록을 삭제할까요?", isPresented: $deleting) {
+          Button("취소", role: .cancel) {}
+          Button("삭제", role: .destructive) {
+            if store.update({ $0.entries.removeAll { $0.id == entry.id } }) { dismiss() }
+          }
+        } message: {
+          Text("이 기록의 XP와 성장 지표도 다시 계산됩니다. 첨부 원본은 보존합니다.")
         }
         .onChange(of: photos) { _, items in Task { await analyze(items) } }
     }
