@@ -7,7 +7,7 @@ def obj(key, body): objects[uid(key)]=body; return uid(key)
 def configs(key, settings):
     ids=[]
     for mode in ['Debug','Release']:
-        extra=' SWIFT_OPTIMIZATION_LEVEL = "-Onone";' if mode=='Debug' else ' SWIFT_OPTIMIZATION_LEVEL = "-O";'
+        extra=' SWIFT_OPTIMIZATION_LEVEL = "-Onone"; ONLY_ACTIVE_ARCH = YES; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;' if mode=='Debug' else ' SWIFT_OPTIMIZATION_LEVEL = "-O";'
         ids.append(obj(key+mode, '{isa = XCBuildConfiguration; name = '+mode+'; buildSettings = {'+settings+extra+'};}'))
     return obj(key+'configs','{isa = XCConfigurationList; buildConfigurations = ('+','.join(ids)+'); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release;}')
 pkg=obj('package','{isa = XCLocalSwiftPackageReference; relativePath = ChagokCore;}')

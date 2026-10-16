@@ -1,0 +1,101 @@
+import XCTest
+
+final class ChagokUITests: XCTestCase {
+  @MainActor func testReadingOnboardingAndGrowth() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--uitesting"]
+    app.launch()
+    XCTAssertTrue(app.buttons["template-pages"].waitForExistence(timeout: 10))
+    app.buttons["template-pages"].tap()
+    app.buttons["activity-save"].tap()
+    app.buttons["onboarding-finish"].tap()
+    XCTAssertTrue(app.buttons["record-pages"].waitForExistence(timeout: 5))
+    app.buttons["record-pages"].tap()
+    let amount = app.textFields["entry-amount"]
+    XCTAssertTrue(amount.waitForExistence(timeout: 5))
+    amount.tap()
+    amount.typeText("15")
+    app.buttons["entry-save"].tap()
+    XCTAssertTrue(app.staticTexts["오늘 15쪽"].waitForExistence(timeout: 5))
+    app.tabBars.buttons["성장"].tap()
+    XCTAssertTrue(app.staticTexts["15쪽 쌓았어요"].waitForExistence(timeout: 5))
+    let attachment = XCTAttachment(screenshot: app.screenshot())
+    attachment.name = "성장 화면"
+    attachment.lifetime = .keepAlways
+    add(attachment)
+  }
+  @MainActor func testPersistentReadingAcrossRelaunch() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--test-store", UUID().uuidString]
+    app.launch()
+    XCTAssertTrue(app.buttons["template-pages"].waitForExistence(timeout: 10))
+    app.buttons["template-pages"].tap()
+    app.buttons["activity-save"].tap()
+    app.buttons["onboarding-finish"].tap()
+    app.buttons["record-pages"].tap()
+    let amount = app.textFields["entry-amount"]
+    amount.tap()
+    amount.typeText("12")
+    app.buttons["entry-save"].tap()
+    XCTAssertTrue(app.staticTexts["오늘 12쪽"].waitForExistence(timeout: 5))
+    app.terminate()
+    app.launch()
+    XCTAssertTrue(app.staticTexts["오늘 12쪽"].waitForExistence(timeout: 10))
+  }
+  @MainActor func testCustomActivityAndQuickConfirmation() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--uitesting"]
+    app.launch()
+    app.buttons["직접 만들기"].tap()
+    let name = app.textFields["activity-name"]
+    name.tap()
+    name.typeText("스트레칭")
+    app.buttons["activity-save"].tap()
+    app.buttons["onboarding-finish"].tap()
+    app.buttons["최소 1회 달성"].tap()
+    XCTAssertTrue(app.staticTexts["최소 달성 확인 · 수치 미기록"].waitForExistence(timeout: 5))
+    app.buttons["실행 취소"].tap()
+    XCTAssertTrue(app.buttons["최소 1회 달성"].exists)
+  }
+  @MainActor func testReadingRangeRefinesQuickEntry() {
+    let app = XCUIApplication()
+    app.launchArguments = ["--uitesting"]
+    app.launch()
+    app.buttons["template-pages"].tap()
+    app.buttons["activity-save"].tap()
+    app.buttons["onboarding-finish"].tap()
+    app.buttons["최소 5쪽 달성"].tap()
+    app.buttons["record-pages"].tap()
+    app.buttons["시작·마지막 페이지"].tap()
+    let start = app.textFields["start-page"]
+    start.tap()
+    start.typeText("40")
+    let end = app.textFields["last-page"]
+    end.tap()
+    end.typeText("55")
+    app.buttons["entry-save"].tap()
+    XCTAssertTrue(app.staticTexts["오늘 15쪽"].waitForExistence(timeout: 5))
+    app.tabBars.buttons["기록"].tap()
+    XCTAssertEqual(app.staticTexts.matching(identifier: "15쪽").count, 1)
+  }
+  @MainActor func testDarkLargeTextOnboarding() {
+    let app = XCUIApplication()
+    app.launchArguments = [
+      "--uitesting", "--large-text-dark",
+    ]
+    app.launch()
+    XCTAssertTrue(app.buttons["template-pages"].waitForExistence(timeout: 10))
+    for _ in 0..<4 where !app.buttons["template-pages"].isHittable { app.swipeUp() }
+    XCTAssertTrue(app.buttons["template-pages"].isHittable)
+    let image = XCTAttachment(screenshot: app.screenshot())
+    image.name = "큰 글자 다크 온보딩"
+    image.lifetime = .keepAlways
+    add(image)
+    app.buttons["template-pages"].tap()
+    XCTAssertTrue(app.buttons["activity-save"].waitForExistence(timeout: 5))
+    app.buttons["activity-save"].tap()
+    for _ in 0..<5 where !app.buttons["onboarding-finish"].isHittable { app.swipeUp() }
+    XCTAssertTrue(app.buttons["onboarding-finish"].isHittable)
+  }
+
+}
