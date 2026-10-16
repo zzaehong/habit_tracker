@@ -3,6 +3,39 @@ import XCTest
 @testable import ChagokCore
 
 final class ProgressTests: XCTestCase {
+  func testReminderPlansRespectScheduleAndLimits() throws {
+    var snapshot = Snapshot()
+    snapshot.timezone = "Asia/Seoul"
+    var activity = Activity(name: "독서", metric: .pages, date: "2026-10-17")
+    let now = ISO8601DateFormatter().date(from: "2026-10-17T01:00:00Z")!
+    snapshot.activities = [activity]
+    XCTAssertTrue(Progress.reminders(snapshot, now: now).isEmpty)
+    activity.reminderMinute = 9 * 60
+    snapshot.activities = [activity]
+    let plans = Progress.reminders(snapshot, now: now)
+    XCTAssertEqual(plans.count, 27)
+    XCTAssertTrue(plans.allSatisfy { $0.date > now })
+    activity.rules[0].schedule = .weekly
+    snapshot.activities = [activity]
+    XCTAssertEqual(Progress.reminders(snapshot, now: now).count, 4)
+    activity.archived = true
+    snapshot.activities = [activity]
+    XCTAssertTrue(Progress.reminders(snapshot, now: now).isEmpty)
+    activity.archived = false
+    activity.rules[0].schedule = .daily
+    snapshot.activities = (0..<4).map { _ in
+      var copy = activity
+      copy.id = UUID().uuidString
+      return copy
+    }
+    let capped = Progress.reminders(snapshot, now: now)
+    XCTAssertEqual(capped.count, 60)
+    XCTAssertEqual(Set(capped.map(\.id)).count, 60)
+    XCTAssertEqual(capped.map(\.date), capped.map(\.date).sorted())
+    XCTAssertEqual(
+      try JSONDecoder().decode(Snapshot.self, from: JSONEncoder().encode(snapshot)), snapshot)
+  }
+
   func testActivityColorBackwardsCompatibility() throws {
     var activity = Activity(name: "독서", metric: .pages, date: "2026-10-17")
     let oldData = try JSONEncoder().encode(activity)
