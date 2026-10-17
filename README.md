@@ -4,6 +4,8 @@
 
 SwiftUI · iOS 18+ · SwiftData. 계정, 서버, iCloud 없이 기기에 저장합니다.
 
+프로토타입 소스 릴리스: [v2.0.0-prototype.1](docs/releases/v2.0.0-prototype.1.md) · 앱 버전 2.0.0 (1)
+
 ## 시작하기
 
 Xcode에서 [`ios/Chagok.xcodeproj`](ios/Chagok.xcodeproj)를 열고 `Chagok` scheme과 iPhone Simulator를 선택해 실행하세요. 실기기는 본인의 서명 Team과 Bundle Identifier를 설정해야 합니다.
