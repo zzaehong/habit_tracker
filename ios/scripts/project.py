@@ -27,7 +27,7 @@ for name, directory, kind in [('Chagok','Chagok','application'),('ChagokUITests'
     frameworkfiles=[obj('libbuild','{isa = PBXBuildFile; productRef = '+product+';}')] if name=='Chagok' else []
     frameworks=obj('frameworks'+name,'{isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = ('+','.join(frameworkfiles)+'); runOnlyForDeploymentPostprocessing = 0;}')
     resources=obj('resources'+name,'{isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = ('+(resbuild if name=='Chagok' else '')+'); runOnlyForDeploymentPostprocessing = 0;}')
-    settings='PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = "app.chagok.'+('ios' if name=='Chagok' else 'uitests')+'"; GENERATE_INFOPLIST_FILE = YES; SWIFT_VERSION = 6.0; IPHONEOS_DEPLOYMENT_TARGET = 18.0; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 2.0;'
+    settings='PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = "app.chagok.'+('ios' if name=='Chagok' else 'uitests')+'"; GENERATE_INFOPLIST_FILE = YES; SWIFT_VERSION = 6.0; IPHONEOS_DEPLOYMENT_TARGET = 18.0; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; MARKETING_VERSION = 2.0.0;'
     if name=='Chagok': settings+=' INFOPLIST_KEY_CFBundleDisplayName = "차곡"; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait; ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;'
     else: settings+=' TEST_TARGET_NAME = Chagok;'
     conf=configs(name,settings)

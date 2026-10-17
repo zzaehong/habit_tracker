@@ -129,3 +129,13 @@
 - FAIL 보존: 첫 UI 실행의 3단계 입력 존재 검사 실패 (runtime/reminders-ui.xcresult). 길어진 폼의 화면 밖 행을 스크롤 없이 검사한 테스트를 수정한 뒤 통과.
 - 시각 확인: runtime/reminders-revised-images 및 runtime/reminders-visual-images. 카드 그림자가 글자에 겹친 것을 발견해 compositingGroup 적용 후 캡처에서 해결 확인.
 - NOT RUN: 실물 iPhone, 알림 실제 전달·전체 스위치와 권한 거절의 시스템 통합 검증, 기존 예약의 첫 실행 이전 실기기 검증, VoiceOver 음성.
+
+## 2026-10-17 v2.0.0-prototype.1 소스 릴리스
+- 사용자 승인 범위: main 통합·GitHub 소스 프리릴리스. TestFlight/IPA/App Store 배포 제외.
+- 시작 develop f4b5be8c03e08ee3b6d6b86c8678773fa9b40d4b, 시작 main 19eff3e30c831d7db7676dc25915feb84fa2bfda.
+- 릴리스 브랜치: release/2.0.0-prototype.1. 앱 2.0.0 (1), iOS 18+.
+- PASS: 핵심 20개 (runtime/release-prototype-core.log), UI 8개 (runtime/release-prototype-ui.xcresult), 무서명 iPhone Release 빌드 (runtime/release-prototype-build.log).
+- PASS: 빌드 Info.plist의 버전·최소 OS 확인, 추적 파일의 runtime DB/이미지/백업/서명 인증서 제외 확인.
+- FAIL: 이번 릴리스 검증 없음. 이전 검증 실패 기록은 유지.
+- NOT RUN: 실제 iPhone/iOS 18/VoiceOver/NRC 실캡처/알림 실제 전달 및 권한/기존 알림 이전 실기기 검증.
+- 서명 인증서 없음. 소스 릴리스에는 설치 바이너리를 포함하지 않음.
