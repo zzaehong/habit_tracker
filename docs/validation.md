@@ -1,0 +1,141 @@
+# 검증 기록
+
+## 초기 상태
+- Starting develop: 19eff3e
+- main: 19eff3e
+- git fetch 성공. 원격 develop 없음. 로컬 develop 생성, upstream 부재로 pull 생략.
+- project-workflow: 문서와 링크 확인 PASS. 앱 테스트 NOT RUN: 아직 앱 없음.
+
+## offline-records
+- 초기 check FAIL: 의존성 설치가 완료되기 전에 실행해 vitest를 찾지 못함. 설치 완료 후 재검증 예정.
+- 초기 로컬 기능 테스트 6개 및 타입 검사·빌드 PASS.
+- npm audit에서 static/Vitest 취약 버전 발견. 수정 버전 전환 중 기존 설치 트리 peer 충돌 FAIL. 생성된 의존성 트리를 재설치하여 해결 진행.
+- 수정 의존성 설치 완료: audit 0 vulnerabilities. 재검증 6 tests PASS, typecheck/build PASS.
+- offline-records develop 병합 후 회귀: 6 tests/typecheck/build PASS.
+
+## meal-tracking
+- 식단 스냅샷, 외식 미상/거름, 요일 테스트 포함 9 tests/typecheck/build PASS.
+- meal-tracking develop 회귀: 9 tests/typecheck/build PASS.
+
+## device-sync
+- 10 tests/typecheck/build PASS. 실제 SQLite/Fastify로 인증, 코드 재사용 거부, 중복 작업, 충돌, 삭제 및 커서 검증.
+- device-sync develop 회귀: 10 tests/typecheck/build PASS.
+
+## history-insights
+- 13 tests/typecheck/build PASS. JSON/ZIP 왕복, CSV escaping, 누락값 집계 검증.
+- history-insights develop 회귀: 13 tests/typecheck/build PASS.
+
+## local-ai-entry
+- 재개 시 상태: feature/local-ai-entry 변경 보존. 16 tests/typecheck/build PASS.
+- Ollama 및 Tailscale CLI/앱 설치를 찾지 못함. 실제 로컬 모델 30개 한국어 예제/성능 측정은 NOT RUN. 테스트 입력과 실행 스크립트 제공.
+- AI 서버 테스트 추가 중 테스트 코드 구문 오류 FAIL. 구문 수정 후 재검증.
+- AI 출력 검증·날짜 기준·작업 중복 방지 포함 17 tests/typecheck/build PASS. AI 서버는 모의 모델 응답으로 검증.
+- local-ai-entry develop 회귀: 17 tests/typecheck/build PASS.
+
+## nrc-capture
+- 최초 OCR 빌드 FAIL: 시스템 Swift module cache 쓰기 권한. 프로젝트 runtime 캐시로 변경.
+- 최초 파서 테스트 FAIL 2건: 숫자가 뒤따르는 시간 라벨 미인식. 라벨 인식 범위를 수정.
+- 파서 수정 후 22 tests/typecheck/build PASS, Swift OCR 컴파일 PASS.
+- 제한된 샌드박스 OCR 실행 FAIL: Vision 시스템 서비스 접근 불가. 승인된 네이티브 실행에서 합성 PNG 5개 필드 인식 PASS.
+- OCR 첫 실행 측정: 14.77초, maximum resident set 86,589,440 bytes, peak footprint 100,221,816 bytes. 합성 이미지 결과이며 실제 NRC 캡처 정확도는 NOT RUN(사용자 캡처 미제공).
+- 성능 측정 호스트 확인: Apple M4, RAM 17,179,869,184 bytes (16GB).
+- nrc-capture develop 회귀: 22 tests/typecheck/build PASS.
+
+## mac-operation
+- SQLite+첨부 백업 통합 테스트 포함 23 tests/typecheck/build PASS.
+- LaunchAgent 생성 및 plutil 문법 검사 PASS. 로그인 항목 실제 등록은 아직 수행하지 않음.
+- 최초 서버 실행 FAIL: tsx CLI의 샌드박스 IPC 권한. node --import tsx로 실행 방식을 바꾸고 승인된 로컬 서버 실행 PASS.
+- 초기 E2E FAIL: 내비게이션 아이콘이 접근 가능한 버튼 이름에 포함되어 테스트의 정확한 이름 선택과 불일치. 장식 아이콘을 aria-hidden 처리하고 재검증.
+- E2E 2차: 식단 보존·두 브라우저 동기화 PASS. 오프라인 수정 테스트는 저장 완료 전 reload, 모바일 테스트는 저장 버튼 이름 중복 매칭으로 FAIL. 완료 UI 대기와 정확한 선택자를 보완.
+- 코드 검토에서 outbox UUID 정렬의 연속 수정 순서 위험 발견. IndexedDB 증가 순번·마이그레이션 추가, 새 기기 기본 템플릿을 서버에서 재사용하도록 수정.
+- 미확정 캡처 초안 첨부의 전체 백업 누락 수정 및 회귀 테스트 추가.
+- E2E 3차: 4/4 PASS (오프라인 재실행/내보내기, 식단 보존, 모바일 추가항목/원문 보존, 두 기기 동기화).
+- 첫 설치 직후 오프라인 실행도 보장하도록 빌드 시 전체 앱 자산 precache 추가. iOS 홈 화면 PNG 아이콘 추가.
+- 과거 활성 일정 보존·페이스 반올림·거리 가중 페이스 테스트 포함 28 tests PASS.
+- 식단 AI 확인 처리 보완 중 typecheck FAIL: MealPlan 타입 import 누락. import 추가 후 재검증.
+- E2E 추가 검증: 첫 설치 오프라인·캡처 ZIP 복원 PASS. 테스트별 서버 데이터 경로 격리 변경 후 worker 설정 재평가로 경로가 달라져 동기화 테스트 FAIL; 상속된 테스트 경로 재사용으로 수정.
+- 복원 대기열 테스트 FAIL: 이전 테스트가 삭제한 IndexedDB 인스턴스 재개방 누락. 테스트 격리 수정.
+- 최종 feature 검증: 단위·통합 31 tests PASS, typecheck/production build PASS, Chromium E2E 5/5 PASS. 첫 설치 오프라인 실행·수정, 식단 스냅샷, 모바일 사용자 항목·원문 보존, 두 브라우저 동기화, 오프라인 캡처 ZIP 복원을 검증.
+- 연속 수정 전송 순서·응답 유실 재전송·충돌 처리·복원 중 기존 대기열 보존 및 서버 스냅샷 복원 테스트 PASS.
+- 러닝 시간 입력을 분:초로 바꾸고 iPhone에서 콜론 입력 가능한 키보드를 사용.
+- 실제 iPhone, 물리적 잠자기 복귀, Tailscale 외부 연결, Ollama 실모델 30개 예제/성능, 실제 NRC 캡처 정확도는 NOT RUN. 각각 실기기 접근·서비스 설치/계정·원본 캡처가 필요. LaunchAgent는 생성/문법 검증만 완료했고 시스템 등록은 미실행.
+- 작업 재개 시 fetch PASS. 로컬 develop에 upstream이 없어 pull은 생략. Starting develop HEAD: 55e2a9b3cc66b23dfe0fafaa0fd41f5eee8f44ee. main: 19eff3e30c831d7db7676dc25915feb84fa2bfda.
+
+## iOS foundation — 2026-10-16
+- Starting develop: 52e3229. origin/develop 추적 설정 후 fetch/pull --ff-only PASS. main 19eff3e 유지.
+- 최초 swift test FAIL: 샌드박스 밖 Swift compiler cache 쓰기 권한. 승인된 실행에서 6 tests PASS.
+- 날짜·주 경계, 빠른 완료 미측정, 순서 독립 XP, 수정/삭제 재계산, 책 다시 읽기·타이머 복원 검증 PASS.
+- 시뮬레이터 최초 조회 FAIL: sandbox CoreSimulator 접근. 승인된 조회에서 iOS 27 런타임 확인.
+- ios-foundation develop 회귀: Swift 6 tests, 웹 31 tests/typecheck/build, 웹 E2E 5/5 PASS.
+
+## iOS backup migration
+- Swift 10 tests PASS: JSON/ZIP 왕복, 해시/CRC/경로 검증, ID 충돌 선택, 기존 원문 보존, 미상 페이지, 소급 XP 꺼짐, NRC 단위·충돌.
+- ios-backup-migration develop 회귀: Swift 10 tests, 웹 31 tests/typecheck/build, 웹 E2E 5/5 PASS.
+
+## iOS app
+- 첫 generic simulator 앱 빌드 PASS. Swift 11 tests PASS (기존 deflate ZIP 및 빈 파일 호환성 추가).
+- UI 테스트 최초 빌드 FAIL: 프로젝트 Debug의 ONLY_ACTIVE_ARCH 기본값 누락으로 앱 x86_64와 패키지 arm64 링크 불일치. Debug 활성 아키텍처 빌드로 수정.
+- iOS UI 3/3 PASS: 독서 온보딩/기록/성장, 커스텀 최소 달성/취소, SwiftData 저장 후 앱 종료·재실행 복원. 성장 화면 스크린샷 검토 PASS.
+- 추가 UI 테스트 컴파일 FAIL: XCUIElement에 count 접근. 쿼리 matching(identifier:).count로 수정.
+- 실기기 아키텍처 iOS Release 무서명 빌드 PASS (실기기 실행은 아님).
+- Swift 16 tests PASS: 사용자 항목 단위/누락, 간격/단발/일시정지 이력, 보상 상한, 타이머/시간대 백업, 식사·웨이트·과외·원문·이미지의 v1→v2 왕복 추가.
+- UI 4차 영속 테스트 FAIL: 프로젝트 Debug에 DEBUG 컴파일 조건이 없어 테스트 전용 저장소 분기가 비활성화되고 이전 시뮬레이터 기본 저장소를 읽음. DEBUG 조건을 추가해 테스트 저장소를 격리. 큰 글자·다크 테스트도 앱 내부 Debug 전용 환경 주입으로 명확히 적용하도록 보완.
+- UI 5차 5/5 PASS: 커스텀 완료/취소, Debug 주입 큰 글자·다크 온보딩, 독립 SwiftData 저장소 앱 재실행, 독서/성장, 빠른 완료→40~55쪽 보완 후 단일 기록 확인.
+- Swift 17 tests PASS: 연속 시간대 변경이 현재 적용 중 시간대의 자정부터 적용되는지 추가 검증.
+- 실제 iPhone, iOS 18 런타임, VoiceOver 음성 탐색, 실제 NRC 캡처 정확도, 실기기 알림 전달, 서명/TestFlight 배포는 NOT RUN (실기기·원본 캡처·서명 계정 미제공). iOS 27 시뮬레이터 및 iPhone arm64 Release 컴파일 결과와 구분.
+- ios-app develop 병합 04ddb93 후 전체 회귀 PASS: Swift 17 tests, 웹 31 tests/typecheck/build, 웹 E2E 5/5, iPhone UI 5/5.
+
+## iOS finalize — 웹 제거
+- 네이티브 앱·기존 백업 이미지 왕복 검증 후 React/Vite/Fastify 소스·웹 테스트·Node 의존성·Service Worker·맥 운영 스크립트 제거. 기존 운영 문서는 docs/history/web-operations.md로 이동하여 보존.
+- runtime DB·이미지·백업·기존 evidence는 삭제하지 않음. 이전 8787 웹 미리보기 서버는 작업 경로와 명령을 확인한 후 SIGTERM 정상 종료.
+- 오늘/이번 주가 끝나기 전에 달성한 경우 성공을 즉시 집계하고, 미달성만 미확정으로 유지하도록 보완. 화면 날짜 선택기도 고정 시간대를 사용.
+- 웹 제거 후 feature 검증: Swift 18 tests PASS, 네이티브 앱 빌드 및 UI 5/5 PASS. Node 의존성 없이 테스트 실행 확인.
+- 재생성 가능한 node_modules/dist는 제거. 마지막 웹 Playwright 보고서는 runtime/evidence/legacy-web-final에 이동하여 보존.
+
+## 2026-10-16 성장 지표 안내·오늘 XP
+- 시작 develop: 3f693be404129f96f535b686958c197e25f64854
+- 브랜치: feature/measurable-growth
+- 활동량·실행률·지속력·기간 변화의 이름과 계산 기준을 성장 화면에 표시. 수치 없는 빠른 완료와 미완료 기간 처리, 비교 기록 부족을 설명.
+- 오늘/선택한 날 XP와 누적 레벨 진행 표시. 기존 rewardOnly 계산을 재사용하고 보상 표시 설정을 따름.
+- PASS: Swift 단위/백업/이전 테스트 18개 (runtime/growth-core.log).
+- PASS: iPhone arm64 Release 무서명 빌드 (runtime/growth-device.log).
+- PASS: Simulator 앱 및 UI 테스트 컴파일 (runtime/growth-test-build.log).
+- FAIL: UI 테스트 실행 명령 — CoreSimulator 1171.7.0과 Xcode 요구 1174.9.2 불일치로 대상 기기 검색 실패 (runtime/growth-feature.log, growth-feature.xcresult). 테스트 assertion 실패가 아니라 실행 환경 실패. 서비스 재시작 후에도 simctl 조회가 응답하지 않아 중단.
+- NOT RUN: 수정한 UI 테스트 실제 실행, 화면 캡처 검토, 실물 iPhone·VoiceOver 확인. UI 테스트에는 오늘 XP 15, 빠른 완료 XP 10 및 취소 후 0, 성장 지표 제목 검증을 추가했고 컴파일만 확인함.
+
+## 2026-10-17 UI 디자인 정리
+- 시작 develop: 59e1b03090fc1be40a2adc4c02850a6491daa546, feature/ios-visual-polish.
+- 공통 카드·아이콘·버튼 모양, 오늘 XP 요약과 단계 막대, 온보딩·기록·성장 화면의 시각 계층을 정리함.
+- PASS: 핵심 테스트 18개 (runtime/design-core.log), Simulator 테스트 빌드 (runtime/design-build.log).
+- PASS: iPhone 18 Pro iOS 27 시뮬레이터 UI 테스트 5개 (runtime/design-ui.xcresult). 이전 CoreSimulator 실행 문제는 이번 실행에서 재현되지 않음.
+- PASS: 성장 및 큰 글자 다크 온보딩 캡처를 직접 확인 (runtime/design-images).
+- FAIL: 없음.
+- NOT RUN: 실제 iPhone, VoiceOver 음성 탐색, iOS 18 기기 확인.
+
+## 2026-10-17 활동 설정 개선
+- 시작 develop b18697851d4dd7da7fdf53a680721d634e4b5974, feature/activity-settings.
+- 읽기 전용/편집 전환, 삭제 확인과 기록·XP 정정, 단계별 입력, 단위 오른쪽 표시, 아이콘 모양·색상 저장을 구현.
+- PASS: 핵심 테스트 19개 (runtime/settings-core-final.log). 색상 없는 기존 JSON과 새 색상 왕복 검증 포함.
+- PASS: 기존 UI 5개 (runtime/settings-ui.xcresult), 신규 편집 잠금·삭제 취소·삭제 확정·XP 정정 UI 테스트 (runtime/settings-edit.xcresult).
+- FAIL: 없음.
+- NOT RUN: 실제 iPhone, VoiceOver 음성, 알림 실제 전달/취소 확인.
+
+## 2026-10-17 알림·기록 동작·저장 피드백
+- 시작 develop a74e1c79b254763f9ad1ad1ee73b44db72e7b00a, feature/activity-reminders-record-actions.
+- 색상 아이콘 미리보기, 활동별 알림 시각 저장 및 전체 알림 스위치, 날짜 아래 수정 버튼과 수정 화면 삭제 구현.
+- 설정의 신규 활동 판정을 ID 기준으로 통일. 완료형의 잘못된 다단계 입력 차단, 저장 검증 오류를 알림창으로 노출. 불필요한 문구 제거 및 둥근 글꼴·버튼·카드 조정.
+- PASS: 핵심 테스트 20개 (runtime/reminders-revised-core.log), UI 8개 (runtime/reminders-revised-ui.xcresult), 카드 외곽 그림자 수정 후 독서·성장 UI 재검증 (runtime/reminders-visual.xcresult).
+- PASS: 새 활동 생성/저장 오류 안내/오늘 표시, 미리보기 선택, 기록 수정/삭제 취소/확정, 알림 일정·과거 시각 제외·주간 일정·보관 제외·60개 제한·백업 왕복.
+- FAIL 보존: 첫 UI 실행의 3단계 입력 존재 검사 실패 (runtime/reminders-ui.xcresult). 길어진 폼의 화면 밖 행을 스크롤 없이 검사한 테스트를 수정한 뒤 통과.
+- 시각 확인: runtime/reminders-revised-images 및 runtime/reminders-visual-images. 카드 그림자가 글자에 겹친 것을 발견해 compositingGroup 적용 후 캡처에서 해결 확인.
+- NOT RUN: 실물 iPhone, 알림 실제 전달·전체 스위치와 권한 거절의 시스템 통합 검증, 기존 예약의 첫 실행 이전 실기기 검증, VoiceOver 음성.
+
+## 2026-10-17 v2.0.0-prototype.1 소스 릴리스
+- 사용자 승인 범위: main 통합·GitHub 소스 프리릴리스. TestFlight/IPA/App Store 배포 제외.
+- 시작 develop f4b5be8c03e08ee3b6d6b86c8678773fa9b40d4b, 시작 main 19eff3e30c831d7db7676dc25915feb84fa2bfda.
+- 릴리스 브랜치: release/2.0.0-prototype.1. 앱 2.0.0 (1), iOS 18+.
+- PASS: 핵심 20개 (runtime/release-prototype-core.log), UI 8개 (runtime/release-prototype-ui.xcresult), 무서명 iPhone Release 빌드 (runtime/release-prototype-build.log).
+- PASS: 빌드 Info.plist의 버전·최소 OS 확인, 추적 파일의 runtime DB/이미지/백업/서명 인증서 제외 확인.
+- FAIL: 이번 릴리스 검증 없음. 이전 검증 실패 기록은 유지.
+- NOT RUN: 실제 iPhone/iOS 18/VoiceOver/NRC 실캡처/알림 실제 전달 및 권한/기존 알림 이전 실기기 검증.
+- 서명 인증서 없음. 소스 릴리스에는 설치 바이너리를 포함하지 않음.
